@@ -1,5 +1,5 @@
 //! Procedural macros of the `cortex-m-rtfm` crate
-#![deny(warnings)]
+//#![deny(warnings)]
 #![feature(proc_macro)]
 #![recursion_limit = "128"]
 
@@ -10,6 +10,10 @@ extern crate proc_macro;
 extern crate quote;
 extern crate rtfm_syntax as syntax;
 extern crate syn;
+
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 use proc_macro::TokenStream;
 use syntax::App;
@@ -185,6 +189,19 @@ fn run(ts: TokenStream) -> Result<TokenStream> {
     let ownerships = analyze::app(&app);
     let tokens = trans::app(&app, &ownerships);
 
+    if cfg!(feature = "klee_mode") {
+        println!("tasks");
+        let mut tasks = Vec::new();
+        for (id, _task) in app.tasks {
+            println!("{}", id);
+            tasks.push(format!("{}", id));
+        }
+
+        let path = Path::new("klee/tasks.txt");
+
+        let mut file = File::create(path).unwrap();
+        write!(file, "// autogenertated file \n {:?}", tasks).unwrap();
+    }
     Ok(format!("{}", tokens)
         .parse()
         .map_err(|_| "BUG: error parsing the generated code")?)
