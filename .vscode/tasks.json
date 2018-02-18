@@ -28,6 +28,18 @@
             ]
         },
         {
+            "label": "xargo build --example empty2 --features klee_mode --target x86_64-unknown-linux-gnu",
+            "type": "shell",
+            "command": "xargo build --example empty2 --features klee_mode --target x86_64-unknown-linux-gnu",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
             "label": "xargo build --example empty --release --target thumbv7m-none-eabi",
             "type": "shell",
             "command": "xargo build --example empty --release --target thumbv7m-none-eabi",
