@@ -32,7 +32,7 @@ app! {
 
         EXTI2: {
             path: exti2,
-            resources: [X, Y],
+            resources: [Y],
         },
     },
 }
