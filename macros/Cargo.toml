@@ -17,3 +17,6 @@ syn = "0.11.11"
 
 [lib]
 proc-macro = true
+
+[features]
+klee_mode = [] 

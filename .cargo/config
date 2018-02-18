@@ -29,3 +29,15 @@ rustflags = [
   "-C", "linker=arm-none-eabi-ld",
   "-Z", "linker-flavor=ld",
 ]
+
+# used when building for klee
+# must build in --release as we are not doing any (post) linking
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+  "--emit=llvm-bc,llvm-ir",
+  "-C", "linker=true"
+]
+
+# default build target (for m3)
+#[build]
+#target = "thumbv7m-none-eabi"

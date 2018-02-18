@@ -1,0 +1,11 @@
+[package]
+authors = ["Jorge Aparicio <jorge@japaric.io>"]
+name = "klee"
+version = "0.1.0"
+
+[dependencies]
+cstr_core = "0.1.0"
+cty = "0.1.5"
+
+[features]
+klee_mode = []

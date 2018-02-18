@@ -89,7 +89,7 @@ extern crate untagged_option;
 
 use core::{mem, u8};
 
-pub use cortex_m::asm::{bkpt, wfi};
+pub use cortex_m::asm::{bkpt, nop, wfi};
 pub use cortex_m_rtfm_macros::app;
 pub use rtfm_core::{Resource, Threshold};
 #[doc(hidden)]
@@ -143,11 +143,51 @@ where
                 if ceiling == max_priority {
                     atomic(t, |t| f(data, t))
                 } else {
-                    let old = basepri::read();
+                    let mut old = 0;
+                    // klee mode code generation
+                    // the generated code should not access the hardware
+                    if !cfg!(feature = "klee_mode") {
+                        old = basepri::read();
+                    }
                     let hw = (max_priority - ceiling) << (8 - _nvic_prio_bits);
-                    basepri::write(hw);
+
+                    // klee mode code generation
+                    // the generated code should not access the hardware
+                    if !cfg!(feature = "klee_mode") {
+                        basepri::write(hw);
+                    }
+
+                    // wcet_bkpt mode
+                    // put breakpoint at raise ceiling, for tracing execution time
+                    if cfg!(feature = "wcet_bkpt") {
+                        bkpt();
+                    }
+
+                    // wcet_nop mode
+                    // leave nop in the production code, to keep memory layout the same
+                    if cfg!(feature = "wcet_nop") {
+                        nop();
+                    }
+
                     let ret = f(data, &mut Threshold::new(ceiling));
-                    basepri::write(old);
+
+                    // wcet_bkpt mode
+                    // put breakpoint at lower ceiling, for tracing execution time
+                    if cfg!(feature = "wcet_bkpt") {
+                        bkpt();
+                    }
+
+                    // wcet_nop mode
+                    // leave nop in the production code, to keep memory layout the same
+                    if cfg!(feature = "wcet_nop") {
+                        nop();
+                    }
+
+                    // klee mode code generation
+                    // the generated code should not access the hardware
+                    if !cfg!(feature = "klee_mode") {
+                        basepri::write(old);
+                    }
                     ret
                 }
             }
