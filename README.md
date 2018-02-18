@@ -13,7 +13,7 @@
 
 ## Complilation
 
-Use a Rust toolchain with a llwm4 backend.
+Use a Rust toolchain with a llvm4 backend.
 
 
 > xargo build --example empty --features klee_mode --release --target x86_64-unknown-linux-gnu
@@ -33,13 +33,13 @@ rustflags = [
 ]
 ```
 
-So both `.bc` and `.ll` are generated for the application at hande (`empty.rs`). (Only `.bc` is indeed needed/used for KLEE analysis, but the `.ll` is neat as being human readable for code inspection).
+So both `.bc` and `.ll` are generated for the application at hand (`empty.rs`). (Only `.bc` is indeed needed/used for KLEE analysis, but the `.ll` is neat as being human readable for code inspection).
 
 The files will contain all symbols besides the *weakly* defined default handlers (which should not be analysed by KLEE in any case).
 
 TODO: there is still a warning on module level assembly.
 
-The `--relesase` flag implies:
+The `--release` flag implies:
 
 ``` text
 [profile.release]
@@ -48,7 +48,7 @@ debug = true
 panic = "abort"
 ```
 
-`lto = true` ensures pre-llvm linknig of dependencies for the generated `.bc` and `.ll` files.
+`lto = true` ensures pre-llvm linking of dependencies for the generated `.bc` and `.ll` files.
 
 `panic = "abort"` is required to override the default panic (unwrap) behavior of the x86 (host) target.
 
