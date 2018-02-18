@@ -435,8 +435,8 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
                 // }
 
                 // make each resource symbolic
-                // later we can theink of "type invariants"
-                k_symbol!(&mut _X, "X");
+                // later we can think of "type invariants"
+                make_resources_symbolic();
 
                 // task set as symbolic
                 // will generate a set of tests for each task

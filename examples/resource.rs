@@ -10,7 +10,7 @@ extern crate stm32f103xx;
 
 #[macro_use]
 extern crate klee;
-use klee::{k_abort, k_read};
+use klee::k_abort;
 
 // import the procedural macro
 use rtfm::{app, Resource, Threshold};
@@ -27,7 +27,7 @@ app! {
     tasks: {
         EXTI1: {
             path: exti1,
-            resources: [X],
+            resources: [X, Y],
         },
 
         EXTI2: {
@@ -37,22 +37,31 @@ app! {
     },
 }
 
-fn exti1(t: &mut Threshold, r: EXTI1::Resources) {
-    let mut y = 0;
-    r.X.claim(t, |x, _| {
-        if *x < 10 {
-            for _ in 0..*x {
-                y += 1;
-                k_visit!();
+#[allow(non_snake_case)]
+fn exti1(t: &mut Threshold, EXTI1::Resources { X, mut Y }: EXTI1::Resources) {
+    X.claim(t, |x, t1| {
+        Y.claim_mut(t1, |y, _| {
+            if *x < 10 {
+                for _ in 0..*x {
+                    *y += 1;
+                }
             }
-        }
+        });
     });
-    k_read(&y);
 }
 
-fn exti2(_t: &mut Threshold, _r: EXTI2::Resources) {}
+fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
+    r.Y.claim_mut(t, |y, _| {
+        if *y < 10 {
+            *y += 1;
+        } else {
+            *y -= 1;
+        }
+    });
+}
 
 #[inline(never)]
+#[allow(dead_code)]
 fn init(_p: init::Peripherals, _r: init::Resources) {}
 
 // The idle loop.
@@ -62,6 +71,7 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 // endless loop.
 
 #[inline(never)]
+#[allow(dead_code)]
 fn idle() -> ! {
     k_abort()
 }
