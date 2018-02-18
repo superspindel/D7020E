@@ -220,6 +220,8 @@ fn idle(
     }
 
     if !cfg!(feature = "klee_mode") {
+        // in non klee mode we will call idle from init
+
         let idle = &app.idle.path;
         main.push(quote! {
             // type check
@@ -227,6 +229,8 @@ fn idle(
 
             idle(#(#exprs),*);
         });
+    } else {
+        // in klee mode we do NOT call idle its treated as a task
     }
 }
 
@@ -471,6 +475,25 @@ fn resources(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 static mut #_name: #krate::UntaggedOption<#ty> =
                     #krate::UntaggedOption { none: () };
             },
+        });
+    }
+
+    if cfg!(feature = "klee_mode") {
+        // collect the identifiers for our resources
+
+        let mut names = Vec::new();
+        for name in ownerships.keys() {
+            let _name = Ident::new(format!("_{}", name.as_ref()));
+            names.push(quote!{
+                k_symbol!(&mut #_name, "#_name");
+            });
+        }
+
+        // generate a function setting all resources to symbolic
+        root.push(quote!{
+            pub unsafe fn make_resources_symbolic() {
+                #(#names)*
+            }
         });
     }
 }
