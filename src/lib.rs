@@ -112,9 +112,13 @@ where
     if t.value() == u8::MAX {
         f(t)
     } else {
-        interrupt::disable();
+        if !cfg!(feature = "klee_mode") {
+            interrupt::disable();
+        }
         let r = f(&mut unsafe { Threshold::max() });
-        unsafe { interrupt::enable() };
+        if !cfg!(feature = "klee_mode") {
+            unsafe { interrupt::enable() };
+        }
         r
     }
 }

@@ -27,7 +27,12 @@ pub fn app(app: &App, ownerships: &Ownerships) -> Tokens {
     quote!(#(#root)*)
 }
 
-fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
+fn idle(
+    app: &App,
+    ownerships: &Ownerships,
+    main: &mut Vec<Tokens>,
+    root: &mut Vec<Tokens>,
+) {
     let krate = krate();
 
     let mut mod_items = vec![];
@@ -132,7 +137,7 @@ fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut V
 
         // owned resource
         if ceiling == 0 {
-            continue
+            continue;
         }
 
         let _name = Ident::new(format!("_{}", name.as_ref()));
@@ -214,13 +219,15 @@ fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut V
         });
     }
 
-    let idle = &app.idle.path;
-    main.push(quote! {
-        // type check
-        let idle: fn(#(#tys),*) -> ! = #idle;
+    if !cfg!(feature = "klee_mode") {
+        let idle = &app.idle.path;
+        main.push(quote! {
+            // type check
+            let idle: fn(#(#tys),*) -> ! = #idle;
 
-        idle(#(#exprs),*);
-    });
+            idle(#(#exprs),*);
+        });
+    }
 }
 
 fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
@@ -454,9 +461,10 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             for rname in &task.resources {
                 let ceiling = ownerships[rname].ceiling();
                 let _rname = Ident::new(format!("_{}", rname.as_ref()));
-                let resource = app.resources
-                    .get(rname)
-                    .expect(&format!("BUG: resource {} has no definition", rname));
+                let resource = app.resources.get(rname).expect(&format!(
+                    "BUG: resource {} has no definition",
+                    rname
+                ));
 
                 let ty = &resource.ty;
                 let _static = if resource.expr.is_some() {
