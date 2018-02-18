@@ -20,20 +20,30 @@ app! {
     device: stm32f103xx,
 }
 
-static mut X: u32 = 32;
+fn t(x: &mut i32) -> i32 {
+    let mut y = 0;
+    if *x < 10 {
+        for _ in 0..*x {
+            y += 1;
+            k_visit!()
+        }
+    }
+    y
+}
+
+pub fn t2() {
+    let mut x = 0;
+    let x: &mut i32 = &mut x;
+    k_symbol!(x, "x");
+
+    let mut y = 0;
+    let y: &mut i32 = &mut y;
+    k_symbol!(y, "y");
+
+    t(x) + t(y);
+}
 
 #[inline(never)]
 fn init(_p: init::Peripherals) {
-    k_symbol!(X, "X");
-    k_assert(unsafe { X } == 33);
-}
-
-// The idle loop.
-//
-// This runs after `init` and has a priority of 0. All tasks can preempt this
-// function. This function can never return so it must contain some sort of
-// endless loop.
-#[inline(never)]
-fn idle() -> ! {
-    k_abort();
+    t2();
 }

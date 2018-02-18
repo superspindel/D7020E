@@ -405,18 +405,47 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
     }
 
     let init = &app.init.path;
-    main.push(quote! {
-        // type check
-        let init: fn(#(#tys,)*) #ret = #init;
 
-        #krate::atomic(unsafe { &mut #krate::Threshold::new(0) }, |_t| unsafe {
-            let _late_resources = init(#(#exprs,)*);
-            #(#late_resource_init)*
+    if !cfg!(feature = "klee_mode") {
+        // code generation for normal mode
+        main.push(quote! {
+            // type check
+            let init: fn(#(#tys,)*) #ret = #init;
 
-            #(#exceptions)*
-            #(#interrupts)*
+            #krate::atomic(unsafe { &mut #krate::Threshold::new(0) }, |_t| unsafe {
+                let _late_resources = init(#(#exprs,)*);
+                #(#late_resource_init)*
+
+                #(#exceptions)*
+                #(#interrupts)*
+            });
         });
-    });
+    } else {
+        // code generation for klee mode
+        main.push(quote! {
+            // type check
+            //let init: fn(#(#tys,)*) #ret = #init;
+
+            unsafe {
+                //     init(#(#exprs,)*);
+                // }
+
+                // make each resource symbolic
+                // later we can theink of "type invariants"
+                k_symbol!(&mut _X, "X");
+
+                // task set as symbolic
+                // will generate a set of tests for each task
+                let mut task = 0;
+                k_symbol!(&mut task, "task");
+                match task {
+                    0 => { _EXTI1(); },
+                    1 => { _EXTI2(); },
+                    _ => {},
+                }
+            }
+        });
+    }
 }
 
 fn resources(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {

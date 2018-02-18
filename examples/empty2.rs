@@ -20,16 +20,15 @@ app! {
     device: stm32f103xx,
 }
 
-#[inline(never)]
+//#[inline(never)]
 fn t() -> i32 {
-    let mut x = unsafe { core::mem::uninitialized() };
+    let mut x = 0;
+    let x: &mut i32 = &mut x;
     let mut y = 0;
     k_symbol!(x, "x");
-    if x < 10 {
-        for _ in 0..x {
+    if *x < 10 {
+        for _ in 0..*x {
             y += 1;
-            //       unsafe { core::ptr::read_volatile(&y) };
-            //    k_abort();
         }
     }
     y
@@ -37,20 +36,6 @@ fn t() -> i32 {
 
 #[inline(never)]
 fn init(_p: init::Peripherals) {
-    // let mut x = unsafe { core::mem::uninitialized() };
-    // let mut y = 0;
-    // k_symbol!(x, "x");
-    // if x < 10 {
-    //     for _ in 0..x {
-    //         y += 1;
-    //         unsafe { core::ptr::read_volatile(&y) };
-    //         //    k_abort();
-    //     }
-    // }
-
-    // unsafe {
-    //     k_assert(core::ptr::read_volatile(&y) == 0);
-    // }
     t();
 }
 

@@ -68,11 +68,34 @@ pub fn k_assert(e: bool) {
 /// make a variable symbolic
 #[macro_export]
 macro_rules! k_symbol {
-    ($id:ident, $name:expr) => {
+    ($id:expr, $name:expr) => {
+        {
         #[allow(unsafe_code)]
+        #[allow(warnings)]
         $crate::k_mk_symbol(
-            unsafe { &mut $id },
+            unsafe { $id },
             unsafe { $crate::CStr::from_bytes_with_nul_unchecked(concat!($name, "\0").as_bytes()) }
         )
+        }
     }
 }
+
+#[macro_export]
+macro_rules! k_visit {
+    ()=> {
+        {
+            #[allow(unsafe_code)]
+            unsafe {
+                core::ptr::read_volatile(&0);
+            }
+        }
+    }
+}
+
+#[cfg(feature = "klee_mode")]
+pub fn k_read<T>(p: &T) {
+    unsafe { core::ptr::read_volatile(p) };
+}
+
+#[cfg(not(feature = "klee_mode"))]
+pub fn k_read<T>(p: &T) {}
