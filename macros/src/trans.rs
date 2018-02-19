@@ -427,21 +427,18 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
     } else {
         // code generation for klee mode
         let mut tasks = vec![];
-        let mut index = 0;
+        let mut index: u32 = 0;
 
-        for (name, task) in &app.tasks {
+        for (name, _task) in &app.tasks {
+            let _name = Ident::new(format!("_{}", name.as_ref()));
             tasks.push(quote!{
-                0 => { _EXTI1(); },
+                #index => { #_name(); }
             });
+            index += 1;
         }
 
         main.push(quote! {
-            // type check
-            //let init: fn(#(#tys,)*) #ret = #init;
-
             unsafe {
-                //     init(#(#exprs,)*);
-                // }
 
                 // make each resource symbolic
                 // later we can think of "type invariants"
@@ -452,8 +449,7 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
                 let mut task = 0;
                 k_symbol!(&mut task, "task");
                 match task {
-                    0 => { _EXTI1(); },
-                    1 => { _EXTI2(); },
+                    #(#tasks),*
                     _ => {},
                 }
             }
