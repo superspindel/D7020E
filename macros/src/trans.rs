@@ -426,6 +426,15 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
         });
     } else {
         // code generation for klee mode
+        let mut tasks = vec![];
+        let mut index = 0;
+
+        for (name, task) in &app.tasks {
+            tasks.push(quote!{
+                0 => { _EXTI1(); },
+            });
+        }
+
         main.push(quote! {
             // type check
             //let init: fn(#(#tys,)*) #ret = #init;
@@ -481,11 +490,12 @@ fn resources(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
     if cfg!(feature = "klee_mode") {
         // collect the identifiers for our resources
 
-        let mut names = Vec::new();
+        let mut names = vec![];
         for name in ownerships.keys() {
             let _name = Ident::new(format!("_{}", name.as_ref()));
+            let _nameq = Ident::new(format!("\"_{}\"", name.as_ref()));
             names.push(quote!{
-                k_symbol!(&mut #_name, "#_name");
+                k_symbol!(&mut #_name, #_nameq);
             });
         }
 
