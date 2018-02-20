@@ -73,5 +73,5 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 #[inline(never)]
 #[allow(dead_code)]
 fn idle() -> ! {
-    k_abort()
+    loop {}
 }
