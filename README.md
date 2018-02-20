@@ -13,8 +13,9 @@
 
 ## Complilation
 
-Use a Rust toolchain with a llvm4 backend.
+Use a Rust toolchain with a llvm4 backend, e.g., nightly-2018-01-10-x86_64-unknown-linux-gnu.
 
+> rustup override set nightly-2018-01-10-x86_64-unknown-linux-gnu
 
 > xargo build --example empty --features klee_mode --release --target x86_64-unknown-linux-gnu
 
