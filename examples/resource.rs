@@ -6,7 +6,7 @@
 
 extern crate cortex_m_rtfm as rtfm;
 // IMPORTANT always do this rename
-extern crate stm32f103xx;
+extern crate stm32f413;
 
 #[macro_use]
 extern crate klee;
@@ -17,7 +17,7 @@ use rtfm::{app, Resource, Threshold};
 
 app! {
     // this is the path to the device crate
-    device: stm32f103xx,
+    device: stm32f413,
 
     resources: {
         static X:u32 = 0;
@@ -27,12 +27,20 @@ app! {
     tasks: {
         EXTI1: {
             path: exti1,
+            priority: 1,
             resources: [X, Y],
         },
 
         EXTI2: {
             path: exti2,
+            priority: 3,
             resources: [Y],
+        },
+
+        EXTI3: {
+            path: exti3,
+            priority: 2,
+            resources: [X],
         },
     },
 }
@@ -59,6 +67,8 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
         }
     });
 }
+
+fn exti3(_t: &mut Threshold, _r: EXTI3::Resources) {}
 
 #[inline(never)]
 #[allow(dead_code)]

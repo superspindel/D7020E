@@ -25,9 +25,11 @@ untagged-option = "0.1.1"
 features = ["abort-on-panic"]
 version = "0.3.9"
 
-[dev-dependencies.stm32f103xx]
+[dev-dependencies.stm32f413]
+git = "https://gitlab.henriktjader.com/pln/stm32f413.git"
 features = ["rt"]
-version = "0.8.0"
+version = "0.2.0"
+
 
 [dev-dependencies.klee]
 path = "./klee"

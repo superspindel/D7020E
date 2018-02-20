@@ -4,6 +4,18 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "xargo build --example resource --release --features wcet_bkpt --target thumbv7em-none-eabihf",
+            "type": "shell",
+            "command": "xargo build --example resource --release --features wcet_bkpt --target thumbv7em-none-eabihf",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
             "label": "xargo build --example resource --features klee_mode --target x86_64-unknown-linux-gnu",
             "type": "shell",
             "command": "xargo build --example resource --features klee_mode --target x86_64-unknown-linux-gnu",

@@ -93,9 +93,9 @@ macro_rules! k_visit {
 }
 
 #[cfg(feature = "klee_mode")]
-pub fn k_read<T>(p: &T) {
+pub fn k_read<T>(_p: &T) {
     unsafe { core::ptr::read_volatile(p) };
 }
 
 #[cfg(not(feature = "klee_mode"))]
-pub fn k_read<T>(p: &T) {}
+pub fn k_read<T>(_p: &T) {}
