@@ -141,8 +141,10 @@ class MainBP(gdb.Breakpoint):
             print("Tasks: ", tasks)
             print("Name of task to test:", tasks[task_to_test])
             if not task_to_test == -1:
-                gdb.write('Task to call: %s \n' % tasks[task_to_test])
-                gdb.execute('call %s' % tasks[task_to_test])
+                gdb.write('Task to call: %s \n' % "stub_" +
+                          tasks[task_to_test])
+                gdb.execute('call %s' % "stub_" +
+                            tasks[task_to_test] + "()")
             else:
                 print("No task defined")
                 """

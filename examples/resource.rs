@@ -115,8 +115,8 @@ fn stub_EXTI3() {
 fn idle() -> ! {
     readbasepri();
     stub_EXTI1();
-    stub_EXTI1();
-    stub_EXTI1();
+    stub_EXTI2();
+    stub_EXTI3();
 
     loop {
         rtfm::nop();
