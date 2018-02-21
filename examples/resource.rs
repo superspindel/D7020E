@@ -68,7 +68,11 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
     });
 }
 
-fn exti3(_t: &mut Threshold, _r: EXTI3::Resources) {}
+fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
+    r.X.claim_mut(t, |x, _| {
+        *x += 1;
+    });
+}
 
 #[inline(never)]
 #[allow(dead_code)]
