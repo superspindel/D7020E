@@ -46,7 +46,6 @@ app! {
     },
 }
 
-#[allow(non_snake_case)]
 fn exti1(t: &mut Threshold, EXTI1::Resources { X, mut Y }: EXTI1::Resources) {
     X.claim(t, |x, t1| {
         Y.claim_mut(t1, |y, _| {
@@ -57,7 +56,6 @@ fn exti1(t: &mut Threshold, EXTI1::Resources { X, mut Y }: EXTI1::Resources) {
             }
         });
     });
-    rtfm::bkpt();
 }
 
 fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
@@ -74,7 +72,11 @@ fn exti3(_t: &mut Threshold, _r: EXTI3::Resources) {}
 
 #[inline(never)]
 #[allow(dead_code)]
-fn init(_p: init::Peripherals, _r: init::Resources) {}
+fn init(_p: init::Peripherals, _r: init::Resources) {
+    loop {
+        rtfm::bkpt();
+    }
+}
 
 extern crate cortex_m;
 use cortex_m::register::basepri;
