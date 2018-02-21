@@ -392,6 +392,21 @@ def klee_run():
     call(klee_cmd, shell=True)
 
 
+def gdb_cyccnt_enable():
+    # Enable cyccnt
+    gdb.execute("mon mww 0xe0001000 1")
+
+
+def gdb_cyccnt_disable():
+    # Disble cyccnt
+    gdb.execute("mon mww 0xe0001000 0")
+
+
+def gdb_cyccnt_reset():
+    # Reset cycle counter to 0
+    gdb.execute("mon mww 0xe0001004 0")
+
+
 """ Run KLEE on the generated files """
 # print(klee_run())
 
