@@ -138,11 +138,11 @@ class MainBP(gdb.Breakpoint):
             gdb.write("Breakpoint in loop()\n")
             gdb.prompt_hook = prompt
 
-            print("Tasks: ", tasks)
-            print("Name of task to test:", tasks[task_to_test])
+            # print("Tasks: ", tasks)
+            # print("Name of task to test:", tasks[task_to_test])
             if not task_to_test == -1:
-                gdb.write('Task to call: %s \n' % "stub_" +
-                          tasks[task_to_test])
+                gdb.write('Task to call: %s \n' % ("stub_" +
+                          tasks[task_to_test]))
                 gdb.execute('call %s' % "stub_" +
                             tasks[task_to_test] + "()")
             else:
