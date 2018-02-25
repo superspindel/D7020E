@@ -189,13 +189,28 @@ def stop_event(evt):
         since every claim have ceiling
         """
         gdb.events.stop.disconnect(stop_event)
+        outputdata.append([tmp1, tmp2, 0, "Finish"])
 
         print("Claims:")
-        print(outputdata)
+        for x in outputdata:
+            print("%s\n" % x)
         gdb.execute("quit")
 
     print("CYCCNT:  %s\nCeiling: %s" % (tmp2, tmp3))
-    outputdata.append([tmp1, tmp2, tmp3])
+
+    """
+    If outputdata is empty, we start
+    If the same ceiling as previously: exit
+    """
+    if len(outputdata):
+        if outputdata[-1][2] >= tmp3:
+            action = "Exit"
+        else:
+            action = "Enter"
+    else:
+        action = "Enter"
+
+    outputdata.append([tmp1, tmp2, tmp3, action])
 
     """
     Prepare a prompt for do_continue()
@@ -246,29 +261,22 @@ def posted_event_init():
     """
     gdb_cyccnt_enable()
     gdb_cyccnt_reset()
-    # ccount = gdb_cyccnt_read()
-    # print(ccount)
 
-    # print("Tasks: ", tasks)
+    print("Tasks: ", tasks)
     # print("Name of task to test:", tasks[task_to_test])
     if not task_to_test == -1:
-        gdb.write('Task to call: %s \n' % ("stub_" +
+        gdb.write('Task to call: %s \n' % (
                   tasks[task_to_test] + "()"))
         task_name = tasks[task_to_test]
         # gdb.prompt_hook = prompt
         gdb.execute('call %s' % "stub_" +
                     tasks[task_to_test] + "()")
-
         print("Called stub")
+
         task_to_test = -1
         do_continue()
     else:
-        # gdb.execute("mon mdw 0xe0001004")
-        # print(gdb_cyccnt_read())
         print("Done else")
-
-    print("In init!")
-    # do_continue()
 
 
 def gather_data():
@@ -282,6 +290,10 @@ def gather_data():
 
 
 def posted_event_finish_execution():
+    """
+    FIXME: Not used currently
+    """
+
     """ Called when the breakpoint at finish_execution() is hit """
     global file_list
     global file_index_current
@@ -497,17 +509,13 @@ def gdb_cyccnt_reset():
 
 def gdb_cyccnt_read():
     # Read cycle counter
-    return int(gdb.execute("mon mdw 0xe0001004", False, True).strip('\n').strip(
-        '0xe000012004:').strip(',').strip(), 16)
+    return int(gdb.execute("mon mdw 0xe0001004", False, True).strip(
+        '\n').strip('0xe000012004:').strip(',').strip(), 16)
 
 
 def gdb_cyccnt_write(num):
     # Write to cycle counter
     gdb.execute('mon mww 0xe0001004 %r' % num)
-
-
-def gdb_basepri_read():
-    return gdb.execute("readbasepri()", False, True)
 
 
 """ Run KLEE on the generated files """
@@ -539,7 +547,7 @@ file_list = ktest_iterate()
 
 """ Get all the tasks to jump to """
 tasks = tasklist_get()
-print(tasks)
+# print(tasks)
 
 """ Run until the next breakpoint """
 gdb.execute("c")
