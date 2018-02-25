@@ -16,7 +16,14 @@ file_index_current = 0
 object_index_current = 0
 
 tasks = []
-task_to_test = -1
+task_to_test = 0
+
+task_name = ""
+
+# Name, Cyccnt, ceiling
+outputdata = []
+
+init_done = 0
 
 """ Max number of events guard """
 object_index_max = 100
@@ -112,22 +119,30 @@ class KTest:
         self.programName = program_name
 
 
-class MainBP(gdb.Breakpoint):
+def do_continue():
+    gdb.execute("continue")
 
-    global tasks
+
+class MainBP(gdb.Breakpoint):
 
     def stop(self):
         # print("##### breakpoint")
         global file_index_current
-        gdb.events.stop.connect(stop_event)
+        global outputdata
+        global init_done
+
         if self.location == "init":
-            gdb.write("Breakpoint in init()\n")
-            gdb.prompt_hook = prompt
-            gdb.post_event(posted_event_main)
-            # gdb.execute('stop')
-            # gdb.execute('jump %r' % tasks[0])
+            # print("##### breakpoint init")
+
+            if not init_done:
+                # gdb.prompt_hook = prompt
+                init_done = 1
+                gdb.post_event(posted_event_init)
+            else:
+                gdb.post_event(gather_data)
 
         elif self.location == "idle":
+            # print("##### breakpoint idle")
             """ Idle loop is reached, now jump to the task specified
                 in the "task" value in the ktest files.
 
@@ -135,41 +150,58 @@ class MainBP(gdb.Breakpoint):
                 then run all of the tasks.
 
             """
-            gdb.write("Breakpoint in loop()\n")
-            gdb.prompt_hook = prompt
-
-            # print("Tasks: ", tasks)
-            # print("Name of task to test:", tasks[task_to_test])
-            if not task_to_test == -1:
-                gdb.write('Task to call: %s \n' % ("stub_" +
-                          tasks[task_to_test]))
-                gdb.execute('call %s' % "stub_" +
-                            tasks[task_to_test] + "()")
-            else:
-                print("No task defined")
-                """
-                for task in tasks:
-                    gdb.write('Task: %r \n' % task)
-                    gdb.execute('jump %r' % task)
-                """
-
             # gdb.write("Breakpoint in finish_execution\n")
             # gdb.write("Stopped before the main loop\n")
             """ Save the execution time and
                 reload back to the main function.
             """
             gdb.prompt_hook = prompt
-            gdb.post_event(posted_event_finish_execution)
+            # gdb.post_event(posted_event_finish_execution)
 
-        """ Needed to actually stop after the breakpoint """
+        """ Needed to actually stop after the breakpoint
+            True: Return prompt
+            False: Continue?
+        """
         return True
+        # return False
 
 
 # Subscribing to the stop events
 def stop_event(evt):
     # print("#### stop event")
     # print("evt %r" % evt)
-    gdb.events.stop.disconnect(stop_event)
+
+    global outputdata
+    global task_name
+
+    tmp1 = task_name
+    tmp2 = gdb_cyccnt_read()
+    """
+    Get the current ceiling level, cast it to an integer
+    """
+    try:
+        tmp3 = int(gdb.parse_and_eval("ceiling").cast(gdb.lookup_type('u8')))
+    except gdb.error:
+        print("Returned from call to %s" % task_name)
+
+        """
+        If there is no ceiling, it means we have returned to init
+        since every claim have ceiling
+        """
+        gdb.events.stop.disconnect(stop_event)
+
+        print("Claims:")
+        print(outputdata)
+        gdb.execute("quit")
+
+    print("CYCCNT:  %s\nCeiling: %s" % (tmp2, tmp3))
+    outputdata.append([tmp1, tmp2, tmp3])
+
+    """
+    Prepare a prompt for do_continue()
+    """
+    gdb.prompt_hook = prompt
+    do_continue()
 
 
 # Hooking the prompt:
@@ -185,16 +217,68 @@ def prompt(current):
     # gdb.execute("
 
 
-"""
-Called when the breakpoint at main() is hit
-"""
+def posted_event_init():
+    """
+    Called at the very beginning of execution
+    when the breakpoint at init() is hit
 
+    Loads each defined task
 
-def posted_event_main():
-    # print("# main BP")
+    """
+
+    """
+    Subscribe stop_event to Breakpoint notifications
+    """
+    gdb.events.stop.connect(stop_event)
+
+    # print("Entering posted_event_init")
+
+    global tasks
+    global task_to_test
+    global task_name
     global file_index_current
-    ktest_setdata(file_index_current)
-    gdb.execute("continue")
+
+    """ Load the variable data """
+    # ktest_setdata(file_index_current)
+
+    """
+    Prepare the cycle counter
+    """
+    gdb_cyccnt_enable()
+    gdb_cyccnt_reset()
+    # ccount = gdb_cyccnt_read()
+    # print(ccount)
+
+    # print("Tasks: ", tasks)
+    # print("Name of task to test:", tasks[task_to_test])
+    if not task_to_test == -1:
+        gdb.write('Task to call: %s \n' % ("stub_" +
+                  tasks[task_to_test] + "()"))
+        task_name = tasks[task_to_test]
+        # gdb.prompt_hook = prompt
+        gdb.execute('call %s' % "stub_" +
+                    tasks[task_to_test] + "()")
+
+        print("Called stub")
+        task_to_test = -1
+        do_continue()
+    else:
+        # gdb.execute("mon mdw 0xe0001004")
+        # print(gdb_cyccnt_read())
+        print("Done else")
+
+    print("In init!")
+    # do_continue()
+
+
+def gather_data():
+
+    global outputdata
+
+    print("Finished everything")
+
+    print(outputdata)
+    gdb.execute("quit")
 
 
 def posted_event_finish_execution():
@@ -315,7 +399,7 @@ def ktest_setdata(file_index):
             print('object %4d: data: %r' %
                   (i, obj_data))
             # gdb.execute('whatis %r' % name.decode('UTF-8'))
-            gdb.execute('whatis %r' % obj_data)
+            # gdb.execute('whatis %r' % obj_data)
             gdb.execute('set variable %s = %r' %
                         (name.decode('UTF-8'), obj_data))
             # gdb.write('Variable %s is:' % name.decode('UTF-8'))
@@ -332,13 +416,14 @@ def ktest_iterate():
     curdir = os.getcwd()
     print(curdir)
     """ We have already entered the output folder """
-    rustoutputfolder = "../target/x86_64-unknown-linux-gnu/debug/examples/"
+    rustoutputfolder = "../target/x86_64-unknown-linux-gnu/release/examples/"
     try:
         os.chdir(rustoutputfolder)
     except IOError:
         print(rustoutputfolder + "not found. Need to run\n")
-        print("xargo build --example resource --features\
+        print("xargo build --release --example resource --features\
               klee_mode --target x86_64-unknown-linux-gnu ")
+        sys.exit(1)
 
     dirlist = next(os.walk("."))[1]
     dirlist.sort()
@@ -347,6 +432,7 @@ def ktest_iterate():
         directory = dirlist[-1]
     except IOError:
         print("No KLEE output, need to run KLEE")
+        sys.exit(1)
 
     print("Using ktest-files from directory:\n" + rustoutputfolder + directory)
 
@@ -371,13 +457,15 @@ def tasklist_get():
     print(os.getcwd())
     with open('../klee/tasks.txt') as fin:
             for line in fin:
-                print(line)
+                # print(line)
                 if not line == "// autogenerated file\n":
                     return [x.strip().strip("[]\"") for x in line.split(',')]
 
 
 def klee_run():
+    """ Stub for running KLEE on the LLVM IR
 
+    """
     PWD = os.getcwd()
     user_id = subprocess.check_output(['id', '-u']).decode()
     group_id = subprocess.check_output(['id', '-g']).decode()
@@ -407,6 +495,21 @@ def gdb_cyccnt_reset():
     gdb.execute("mon mww 0xe0001004 0")
 
 
+def gdb_cyccnt_read():
+    # Read cycle counter
+    return int(gdb.execute("mon mdw 0xe0001004", False, True).strip('\n').strip(
+        '0xe000012004:').strip(',').strip(), 16)
+
+
+def gdb_cyccnt_write(num):
+    # Write to cycle counter
+    gdb.execute('mon mww 0xe0001004 %r' % num)
+
+
+def gdb_basepri_read():
+    return gdb.execute("readbasepri()", False, True)
+
+
 """ Run KLEE on the generated files """
 # print(klee_run())
 
@@ -417,8 +520,8 @@ MainBP("init")
 
 
 """ Tell gdb-dashboard to hide """
-gdb.execute("dashboard -enabled off")
-gdb.execute("dashboard -output /dev/null")
+# gdb.execute("dashboard -enabled off")
+# gdb.execute("dashboard -output /dev/null")
 
 """ Also break at the main-loop """
 MainBP("idle")
@@ -428,14 +531,15 @@ MainBP("idle")
 gdb.execute("set confirm off")
 gdb.execute("set pagination off")
 gdb.execute("set verbose off")
+gdb.execute("set height 0")
 
 """ Save all ktest files into an array """
 file_list = ktest_iterate()
-print(file_list)
+# print(file_list)
 
 """ Get all the tasks to jump to """
 tasks = tasklist_get()
 print(tasks)
 
-""" Run until the main() breakpoint """
+""" Run until the next breakpoint """
 gdb.execute("c")
