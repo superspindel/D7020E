@@ -11,6 +11,8 @@ import subprocess
 
 version_no = 3
 
+debug = False
+
 file_list = []
 file_index_current = 0
 object_index_current = 0
@@ -126,13 +128,11 @@ def do_continue():
 class MainBP(gdb.Breakpoint):
 
     def stop(self):
-        # print("##### breakpoint")
         global file_index_current
         global outputdata
         global init_done
 
         if self.location == "init":
-            # print("##### breakpoint init")
 
             if not init_done:
                 # gdb.prompt_hook = prompt
@@ -140,23 +140,6 @@ class MainBP(gdb.Breakpoint):
                 gdb.post_event(posted_event_init)
             else:
                 gdb.post_event(gather_data)
-
-        elif self.location == "idle":
-            # print("##### breakpoint idle")
-            """ Idle loop is reached, now jump to the task specified
-                in the "task" value in the ktest files.
-
-                If the task value is greater than the number of tasks,
-                then run all of the tasks.
-
-            """
-            # gdb.write("Breakpoint in finish_execution\n")
-            # gdb.write("Stopped before the main loop\n")
-            """ Save the execution time and
-                reload back to the main function.
-            """
-            gdb.prompt_hook = prompt
-            # gdb.post_event(posted_event_finish_execution)
 
         """ Needed to actually stop after the breakpoint
             True: Return prompt
@@ -173,44 +156,52 @@ def stop_event(evt):
 
     global outputdata
     global task_name
+    global file_index_current
+    global file_list
 
-    tmp1 = task_name
-    tmp2 = gdb_cyccnt_read()
+    cyccnt = gdb_cyccnt_read()
     """
     Get the current ceiling level, cast it to an integer
     """
     try:
-        tmp3 = int(gdb.parse_and_eval("ceiling").cast(gdb.lookup_type('u8')))
+        ceiling = int(gdb.parse_and_eval("ceiling").
+                      cast(gdb.lookup_type('u8')))
     except gdb.error:
-        print("Returned from call to %s" % task_name)
+        # print("Returned from call to %s" % task_name)
 
         """
         If there is no ceiling, it means we have returned to init
         since every claim have ceiling
         """
-        gdb.events.stop.disconnect(stop_event)
-        outputdata.append([tmp1, tmp2, 0, "Finish"])
+        # gdb.events.stop.disconnect(stop_event)
+        outputdata.append([task_name, cyccnt, 0, "Finish"])
 
         print("Claims:")
         for x in outputdata:
-            print("%s\n" % x)
-        gdb.execute("quit")
+            print("%s" % x)
 
-    print("CYCCNT:  %s\nCeiling: %s" % (tmp2, tmp3))
+        if file_index_current < len(file_list) - 1:
+            gather_data()
+        else:
+            gdb.execute("quit")
+
+        return
+
+    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][2]))
 
     """
     If outputdata is empty, we start
     If the same ceiling as previously: exit
     """
     if len(outputdata):
-        if outputdata[-1][2] >= tmp3:
+        if outputdata[-1][2] >= ceiling:
             action = "Exit"
         else:
             action = "Enter"
     else:
         action = "Enter"
 
-    outputdata.append([tmp1, tmp2, tmp3, action])
+    outputdata.append([task_name, cyccnt, ceiling, action])
 
     """
     Prepare a prompt for do_continue()
@@ -254,7 +245,7 @@ def posted_event_init():
     global file_index_current
 
     """ Load the variable data """
-    # ktest_setdata(file_index_current)
+    ktest_setdata(file_index_current)
 
     """
     Prepare the cycle counter
@@ -264,6 +255,11 @@ def posted_event_init():
 
     print("Tasks: ", tasks)
     # print("Name of task to test:", tasks[task_to_test])
+
+    if task_to_test > len(tasks):
+        print("Nothing to call...")
+        do_continue()
+        return
     if not task_to_test == -1:
         gdb.write('Task to call: %s \n' % (
                   tasks[task_to_test] + "()"))
@@ -271,7 +267,7 @@ def posted_event_init():
         # gdb.prompt_hook = prompt
         gdb.execute('call %s' % "stub_" +
                     tasks[task_to_test] + "()")
-        print("Called stub")
+        # print("Called stub")
 
         task_to_test = -1
         do_continue()
@@ -282,11 +278,21 @@ def posted_event_init():
 def gather_data():
 
     global outputdata
+    global file_index_current
+    global file_list
+    global init_done
 
-    print("Finished everything")
+    if file_index_current < len(file_list):
+        init_done = 0
+        file_index_current += 1
+        print("Current file: %s" % file_list[file_index_current])
+        gdb.post_event(posted_event_init)
 
-    print(outputdata)
-    gdb.execute("quit")
+    else:
+        print("Finished everything")
+
+        print(outputdata)
+        gdb.execute("quit")
 
 
 def posted_event_finish_execution():
@@ -384,32 +390,39 @@ def ktest_setdata(file_index):
     """
     global file_list
     global task_to_test
+    global debug
+
     b = KTest.fromfile(file_list[file_index])
-    # print('ktest filename : %r' % filename)
-    gdb.write('ktest file: %r \n' % file_list[file_index])
-    # print('args       : %r' % b.args)
-    # print('num objects: %r' % len(b.objects))
+    if debug:
+        # print('ktest filename : %r' % filename)
+        gdb.write('ktest file: %r \n' % file_list[file_index])
+        # print('args       : %r' % b.args)
+        # print('num objects: %r' % len(b.objects))
     for i, (name, data) in enumerate(b.objects):
         str = trimZeros(data)
 
         """ If Name is "task", skip it """
         if name.decode('UTF-8') == "task":
-            print('object %4d: name: %r' % (i, name))
-            print('object %4d: size: %r' % (i, len(data)))
+            if debug:
+                print('object %4d: name: %r' % (i, name))
+                print('object %4d: size: %r' % (i, len(data)))
             # print(struct.unpack('i', str).repr())
             # task_to_test = struct.unpack('i', str)[0]
             # print("str: ", str)
             # print("str: ", str[0])
-            # task_to_test = struct.unpack('i', str)[0]
-            task_to_test = int(str[0])
-            print("Task to test:", task_to_test)
+            task_to_test = struct.unpack('i', str)[0]
+            # task_to_test = int(str[0])
+            if debug:
+                print("Task to test:", task_to_test)
         else:
-            print('object %4d: name: %r' % (i, name))
-            print('object %4d: size: %r' % (i, len(data)))
+            if debug:
+                print('object %4d: name: %r' % (i, name))
+                print('object %4d: size: %r' % (i, len(data)))
             # if opts.writeInts and len(data) == 4:
             obj_data = struct.unpack('i', str)[0]
-            print('object %4d: data: %r' %
-                  (i, obj_data))
+            if debug:
+                print('object %4d: data: %r' %
+                      (i, obj_data))
             # gdb.execute('whatis %r' % name.decode('UTF-8'))
             # gdb.execute('whatis %r' % obj_data)
             gdb.execute('set variable %s = %r' %
@@ -418,7 +431,8 @@ def ktest_setdata(file_index):
             # gdb.execute('print %s' % name.decode('UTF-8'))
             # else:
             # print('object %4d: data: %r' % (i, str))
-    print("Done with setdata")
+    if debug:
+        print("Done with setdata")
 
 
 def ktest_iterate():
@@ -426,9 +440,10 @@ def ktest_iterate():
         last one.
     """
     curdir = os.getcwd()
-    print(curdir)
+    if debug:
+        print(curdir)
     """ We have already entered the output folder """
-    rustoutputfolder = "../target/x86_64-unknown-linux-gnu/release/examples/"
+    rustoutputfolder = "../target/x86_64-unknown-linux-gnu/debug/examples/"
     try:
         os.chdir(rustoutputfolder)
     except IOError:
@@ -439,7 +454,8 @@ def ktest_iterate():
 
     dirlist = next(os.walk("."))[1]
     dirlist.sort()
-    print(dirlist)
+    if debug:
+        print(dirlist)
     try:
         directory = dirlist[-1]
     except IOError:
@@ -466,7 +482,8 @@ def tasklist_get():
     """ Parse the automatically generated tasklist
     """
 
-    print(os.getcwd())
+    if debug:
+        print(os.getcwd())
     with open('../klee/tasks.txt') as fin:
             for line in fin:
                 # print(line)
