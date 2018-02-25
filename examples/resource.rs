@@ -76,9 +76,7 @@ fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
 
 #[inline(never)]
 #[allow(dead_code)]
-fn init(_p: init::Peripherals, _r: init::Resources) {
-    loop {}
-}
+fn init(_p: init::Peripherals, _r: init::Resources) {}
 
 extern crate cortex_m;
 use cortex_m::register::basepri;
