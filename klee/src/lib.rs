@@ -7,7 +7,7 @@ extern crate cstr_core;
 extern crate cty;
 
 // mod lang_items;
-mod ll;
+pub mod ll;
 
 use core::mem;
 
@@ -42,7 +42,7 @@ pub fn k_mk_symbol<T>(t: &mut T, name: &CStr) {
     }
 }
 
-#[inline(never)]
+#[inline(always)]
 pub fn k_abort() -> ! {
     unsafe {
         ll::abort();
@@ -50,7 +50,7 @@ pub fn k_abort() -> ! {
 }
 
 /// assume a condition involving symbolic variables
-#[inline(never)]
+#[inline(always)]
 pub fn k_assume(cond: bool) {
     unsafe {
         ll::klee_assume(cond);
@@ -58,10 +58,12 @@ pub fn k_assume(cond: bool) {
 }
 
 /// assert a condition involving symbolic variables
-#[inline(never)]
+#[inline(always)]
 pub fn k_assert(e: bool) {
     if !e {
-        k_abort();
+        unsafe {
+            ll::abort();
+        }
     }
 }
 
@@ -70,12 +72,27 @@ pub fn k_assert(e: bool) {
 macro_rules! k_symbol {
     ($id:expr, $name:expr) => {
         {
-        #[allow(unsafe_code)]
-        #[allow(warnings)]
-        $crate::k_mk_symbol(
-            unsafe { $id },
-            unsafe { $crate::CStr::from_bytes_with_nul_unchecked(concat!($name, "\0").as_bytes()) }
-        )
+            #[allow(unsafe_code)]
+            #[allow(warnings)]
+            $crate::k_mk_symbol(
+                unsafe { $id },
+                unsafe { $crate::CStr::from_bytes_with_nul_unchecked(concat!($name, "\0").as_bytes()) }
+            )
+        }
+    }
+}
+
+/// assertion
+#[macro_export]
+macro_rules! k_assert {
+    ($e: expr) => {
+        {
+            use klee::ll;
+            if !$e {
+                unsafe {
+                    ll::abort();
+                }
+            }
         }
     }
 }
