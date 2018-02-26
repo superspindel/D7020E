@@ -65,7 +65,7 @@ fn idle() -> ! {
 // 2> xargo build --example panic1 --features klee_mode --target x86_64-unknown-linux-gnu
 //
 // 1) We need a slightly older version of Rust with a LLVM 4 backend to run KLEE
-//    `rustup override` will stick the direcory to a set tool-chain (run once)
+//    `rustup override` will stick the directory to a set tool-chain (run once)
 //
 // 2) As LLVM runs on our host we generate the `.bc` with x86 as target
 //
@@ -73,8 +73,8 @@ fn idle() -> ! {
 //
 // 3>  docker run --rm --user $(id -u):$(id -g) -v $PWD/target/x86_64-unknown-linux-gnu/debug/examples:/mnt -w /mnt -it afoht/llvm-klee-4 /bin/bash
 //
-// 3) This will start the docker with the right previliges and mount the directory
-//    where the example `.bc` file(s) are stored (shared/overlayed with the host file system).
+// 3) This will start the docker with the right privileges and mount the directory
+//    where the example `.bc` file(s) are stored (shared/overlaid with the host file system).
 //
 // You can now let KLEE run on the `.bc` file.
 //
