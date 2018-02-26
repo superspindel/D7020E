@@ -185,14 +185,14 @@ def stop_event(evt):
 
         return
 
-    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][2]))
+    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
 
     """
     If outputdata is empty, we start
     If the same ceiling as previously: exit
     """
     if len(outputdata):
-        if outputdata[-1][2] >= ceiling:
+        if outputdata[-1][3] >= ceiling:
             action = "Exit"
         else:
             action = "Enter"
