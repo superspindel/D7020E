@@ -114,11 +114,11 @@ fn idle() -> ! {
 // here 'j' has the value 0x00 (0 as integer), triggering the `else` branch
 //
 // How, can KLEE figure out concrete values for the symbolic variable `j`?
-// Well, it tracks the data dependencies and condititonals along feasible execution paths
+// Well, it tracks the data dependencies and conditionals along feasible execution paths
 // of the program (task EXTI1 in our case). And when encountering a `k_abort`
 // it passes the collected (path) condition to an SMT solver.
-// The solver returns with a concrete assigmnent for a `k_abort` if possible.
-// This can be seen as a reachabilty proof or (equivalently) as a counter example
+// The solver returns with a concrete assignment for a `k_abort` if possible.
+// This can be seen as a reachability proof or (equivalently) as a counter example
 // to an `k_assert`.
 //
 // Show to the lab assistant that you can replicate the above, and explain
