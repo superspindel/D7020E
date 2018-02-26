@@ -178,10 +178,23 @@ def stop_event(evt):
         if file_index_current < len(file_list) - 1:
             gather_data()
         else:
+            offset = 1
             print("\nFinished all ktest files!\n")
             print("Claims:")
-            for x in outputdata:
-                print("%s" % x)
+            for index, obj in enumerate(outputdata):
+                if obj[4] == 'Exit':
+                    claim_time = (obj[2] -
+                                  outputdata[index - (offset)][2])
+                    # print("Claim time: %s" % claim_time)
+                    print("%s Claim time: %s" % (obj, claim_time))
+                    offset += 2
+                elif obj[4] == 'Finish' and not obj[2] == 0:
+                    offset = 1
+                    tot_time = obj[2]
+                    print("%s Total time: %s" % (obj, tot_time))
+                else:
+                    print("%s" % (obj))
+
             gdb.execute("quit")
 
         return
