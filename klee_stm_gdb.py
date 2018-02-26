@@ -128,8 +128,6 @@ def do_continue():
 class MainBP(gdb.Breakpoint):
 
     def stop(self):
-        global file_index_current
-        global outputdata
         global init_done
 
         if self.location == "init":
@@ -160,6 +158,7 @@ def stop_event(evt):
     global file_list
 
     cyccnt = gdb_cyccnt_read()
+    file_name = file_list[file_index_current].split('/')[-1]
     """
     Get the current ceiling level, cast it to an integer
     """
@@ -167,22 +166,21 @@ def stop_event(evt):
         ceiling = int(gdb.parse_and_eval("ceiling").
                       cast(gdb.lookup_type('u8')))
     except gdb.error:
-        # print("Returned from call to %s" % task_name)
 
         """
         If there is no ceiling, it means we have returned to init
         since every claim have ceiling
         """
         # gdb.events.stop.disconnect(stop_event)
-        outputdata.append([task_name, cyccnt, 0, "Finish"])
-
-        print("Claims:")
-        for x in outputdata:
-            print("%s" % x)
+        outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
 
         if file_index_current < len(file_list) - 1:
             gather_data()
         else:
+            print("\nFinished all ktest files!\n")
+            print("Claims:")
+            for x in outputdata:
+                print("%s" % x)
             gdb.execute("quit")
 
         return
@@ -201,7 +199,7 @@ def stop_event(evt):
     else:
         action = "Enter"
 
-    outputdata.append([task_name, cyccnt, ceiling, action])
+    outputdata.append([file_name, task_name, cyccnt, ceiling, action])
 
     """
     Prepare a prompt for do_continue()
@@ -243,6 +241,8 @@ def posted_event_init():
     global task_to_test
     global task_name
     global file_index_current
+    global file_list
+    global outputdata
 
     """ Load the variable data """
     ktest_setdata(file_index_current)
@@ -253,17 +253,21 @@ def posted_event_init():
     gdb_cyccnt_enable()
     gdb_cyccnt_reset()
 
-    print("Tasks: ", tasks)
+    # print("Tasks: ", tasks)
     # print("Name of task to test:", tasks[task_to_test])
 
     if task_to_test > len(tasks):
         print("Nothing to call...")
         do_continue()
         return
+
     if not task_to_test == -1:
+        task_name = tasks[task_to_test]
+        file_name = file_list[file_index_current].split('/')[-1]
+        outputdata.append([file_name, task_name, 0, 0, "Start"])
+
         gdb.write('Task to call: %s \n' % (
                   tasks[task_to_test] + "()"))
-        task_name = tasks[task_to_test]
         # gdb.prompt_hook = prompt
         gdb.execute('call %s' % "stub_" +
                     tasks[task_to_test] + "()")
@@ -285,7 +289,7 @@ def gather_data():
     if file_index_current < len(file_list):
         init_done = 0
         file_index_current += 1
-        print("Current file: %s" % file_list[file_index_current])
+        # print("Current file: %s" % file_list[file_index_current])
         gdb.post_event(posted_event_init)
 
     else:
@@ -564,7 +568,9 @@ file_list = ktest_iterate()
 
 """ Get all the tasks to jump to """
 tasks = tasklist_get()
-# print(tasks)
+print("Available tasks:")
+for t in tasks:
+    print(t)
 
 """ Run until the next breakpoint """
 gdb.execute("c")
