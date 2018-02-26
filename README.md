@@ -17,7 +17,7 @@ Use a Rust toolchain with a llvm4 backend, e.g., nightly-2018-01-10-x86_64-unkno
 
 > rustup override set nightly-2018-01-10-x86_64-unknown-linux-gnu
 
-> xargo build --example empty --features klee_mode --release --target x86_64-unknown-linux-gnu
+> xargo build --example panic1 --features klee_mode --target x86_64-unknown-linux-gnu
 
 The `--features klee_mode` implies the following:
 
@@ -34,7 +34,7 @@ rustflags = [
 ]
 ```
 
-So both `.bc` and `.ll` are generated for the application at hand (`empty.rs`). (Only `.bc` is indeed needed/used for KLEE analysis, but the `.ll` is neat as being human readable for code inspection).
+So both `.bc` and `.ll` are generated for the application at hand (`panic1.rs`). (Only `.bc` is indeed needed/used for KLEE analysis, but the `.ll` is neat as being human readable for code inspection).
 
 The files will contain all symbols besides the *weakly* defined default handlers (which should not be analysed by KLEE in any case).
 
@@ -65,15 +65,15 @@ In the current folder:
 
 > docker run --rm --user $(id -u):$(id -g) -v $PWD/target/x86_64-unknown-linux-gnu/release/examples:/mnt -w /mnt -it afoht/llvm-klee-4 /bin/bash
 
-This starts a shell in the docker `llvm-klee-4`, with a shared mount to the examples directory, where your `empty-xxxx.bc` is located.
+This starts a shell in the docker `llvm-klee-4`, with a shared mount to the examples directory, where your `panic1-xxxx.bc` is located.
 
 From there you can run various commands like:
 
-> klee empty-xxxxx.bc
+> klee panic1-xxxxx.bc
 
 To emit all the different errors, use
 
-> klee --emit-all-errors empty-xxxxx.bc
+> klee --emit-all-errors panic1-xxxxx.bc
 
 this will generate a test-file for each and every path encountered.
 
