@@ -71,6 +71,12 @@ From there you can run various commands like:
 
 > klee empty-xxxxx.bc
 
+To emit all the different errors, use
+
+> klee --emit-all-errors empty-xxxxx.bc
+
+this will generate a test-file for each and every path encountered.
+
 See KLEE for detailed information.
 
 Licensed under either of
