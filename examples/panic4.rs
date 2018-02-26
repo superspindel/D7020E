@@ -48,10 +48,10 @@ fn exti1(t: &mut Threshold, mut r: EXTI1::Resources) {
 }
 
 fn exti2(t: &mut Threshold, r: EXTI2::Resources) {
-    // k_assume(*r.X > _ && *r.X < _); // pre-contition on X
+    // k_assume(*r.X > _ && *r.X < _); // pre-condition on X
     let b = r.A[*r.X as usize];
     *r.I = b;
-    // as we don't change X post-condtiton is trivially true
+    // as we don't change X post-condition is trivially true
 }
 
 // The `init` function
@@ -91,7 +91,7 @@ fn idle() -> ! {
 // You should not change the code, just enable the contacts
 // The `_` should be filled with concrete values
 //
-// Can you find a type invariant that satisfies BOTH pre- and post-condtitons
+// Can you find a type invariant that satisfies BOTH pre- and post-conditions
 // at the same time.
 //
 // If not, why is that not possible?

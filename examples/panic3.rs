@@ -73,13 +73,13 @@ fn idle() -> ! {
 // with a non atomic data type (u64), amounting to sequential reads
 // (which are 32 bit on the ARM Cortex M).
 //
-// However the framework analysis is clever enought to realize that the tasks
+// However the framework analysis is clever enough to realize that the tasks
 // `EXTI1` and `EXTI2` can never preempt each other, hence we can
-// can access the data without "claiming" the resouce.
+// can access the data without "claiming" the resource.
 //
-// Access is done by "dereferencing" `*r.X`, and we can now assert the
-// the value to be `*r.X`. However, as tasks operetate concurrently,
-// (without knowlegde on other tasks in the system), our analysis here
+// Access is done by "dereferencing" `*r.X`, and we can now assert
+// the value to be `*r.X`. However, as tasks operate concurrently,
+// (without knowledge on other tasks in the system), our analysis here
 // marks `X` as a (implicitly) symbolic.
 //
 // Compile and run the example in KLEE.
@@ -94,9 +94,9 @@ fn idle() -> ! {
 // ["EXTI1", "EXTI2"]
 //
 // In this case EXTI => task 0, EXTI2 = task 1, but they might be swapped
-// due to the underlyind data structure being an (unordered) hash-map.
+// due to the underlying data structure being an (unordered) hash-map.
 //
-// Now uncomment the code in `exiti2` and comment out the assertion in `exti1`.
+// Now uncomment the code in `exti2` and comment out the assertion in `exti1`.
 //
 // Run the KLEE tool and find the failing assertion.
 //
