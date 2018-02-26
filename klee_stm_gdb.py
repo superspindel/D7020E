@@ -173,6 +173,7 @@ def stop_event(evt):
         """
         # gdb.events.stop.disconnect(stop_event)
         outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
+        gdb_cyccnt_reset()
 
         if file_index_current < len(file_list) - 1:
             gather_data()
