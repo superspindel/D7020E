@@ -28,6 +28,7 @@ rustflags = [
   "-C", "link-arg=-Tlink.x",
   "-C", "linker=arm-none-eabi-ld",
   "-Z", "linker-flavor=ld",
+  "-Z", "thinlto=no",
 ]
 
 # used when building for klee
@@ -35,7 +36,8 @@ rustflags = [
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
   "--emit=llvm-bc,llvm-ir",
-  "-C", "linker=true"
+  "-C", "linker=true",
+  "-Z", "thinlto=no",
 ]
 
 # default build target (for m3)

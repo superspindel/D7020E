@@ -8,12 +8,15 @@ extern "C" {
 }
 
 #[cfg(not(feature = "klee_mode"))]
+#[inline(always)]
 pub unsafe fn abort() -> ! {
     loop {}
 }
 
 #[cfg(not(feature = "klee_mode"))]
+#[inline(always)]
 pub unsafe fn klee_assume(_cond: bool) {}
 
 #[cfg(not(feature = "klee_mode"))]
+#[inline(always)]
 pub unsafe fn klee_make_symbolic(_ptr: *mut c_void, _size: usize, _name: *const c_char) {}
