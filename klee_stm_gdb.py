@@ -2,20 +2,24 @@ import gdb
 import os
 import sys
 import struct
-import sqlite3
 from subprocess import call
 import subprocess
+import glob
 
-# Should ideally properly just import from ktest-tool
-# from .ktesttool import KTest
-
+""" ktest file version """
 version_no = 3
 
 debug = False
+autobuild = True
+
+klee_out_folder = 'target/x86_64-unknown-linux-gnu/debug/examples/'
+stm_out_folder = 'target/thumbv7em-none-eabihf/release/examples/'
 
 file_list = []
 file_index_current = 0
 object_index_current = 0
+
+example_name = "resource"
 
 tasks = []
 task_to_test = 0
@@ -33,28 +37,8 @@ object_index_max = 100
 database_name = "klee_profiling"
 path = "output"
 
-""" Create an folder named output if it doesn't exist """
-os.makedirs(path, exist_ok=True)
-""" Enter the output folder """
-os.chdir(path)
-
-""" Check if a database exists, otherwise create one """
-
-if os.path.isfile("%s%s" % (database_name, ".db")):
-    os.rename("%s%s" % (database_name, ".db"),
-              "%s%s" % (database_name, "_old.db"))
-    # conn = sqlite3.connect(database_name)
-    # cur = conn.cursor()
-    # print("Opened already created database")
-conn = sqlite3.connect("%s%s" % (database_name, ".db"))
-cur = conn.cursor()
-cur.execute('''CREATE TABLE IF NOT EXISTS events
-    (ID INTEGER PRIMARY KEY AUTOINCREMENT,
-    FILE           TEXT     NOT NULL,
-    TIME           INT      NOT NULL,
-    RESOURCE       TEXT     NOT NULL,
-    ACTION         TEXT,
-    JOB            TEXT);''')
+""" Define the original working directory """
+original_pwd = os.getcwd()
 
 
 class KTestError(Exception):
@@ -313,87 +297,6 @@ def gather_data():
         gdb.execute("quit")
 
 
-def posted_event_finish_execution():
-    """
-    FIXME: Not used currently
-    """
-
-    """ Called when the breakpoint at finish_execution() is hit """
-    global file_list
-    global file_index_current
-    global object_index_current
-    global object_index_max
-
-    # gdb.execute("print eventlist")
-
-    # print("object_current: %r " % object_index_current)
-    print("object_max: %r " % object_index_max)
-
-    while object_index_current < object_index_max:
-        """ Collect all data for the database """
-        event_time = gdb.parse_and_eval("eventlist[" +
-                                        str(object_index_current) +
-                                        "].time")
-
-        event_resource = gdb.parse_and_eval("eventlist[" +
-                                            str(object_index_current) +
-                                            "].elem")
-
-        event_action = gdb.parse_and_eval("eventlist[" +
-                                          str(object_index_current) +
-                                          "].action")
-
-        """ Parse which running job is active """
-
-        event_job = gdb.parse_and_eval("job")
-
-        """
-        print("file: %r " % str(file_list[file_index_current]))
-        print("time: %r " % int(event_time))
-        print("resource:  %r" % str(event_resource))
-        print("action:  %r" % str(event_action))
-        """
-
-        event = []
-
-        event.append(str(file_list[file_index_current]))
-        event.append(int(event_time))
-        event.append(str(event_resource))
-        event.append(str(event_action))
-        event.append("j" + str(event_job))
-
-        print("Event: %r " % event)
-
-        try:
-            cur = conn.cursor()
-
-            cur.execute('INSERT INTO events(FILE, TIME, RESOURCE, ACTION, JOB)\
-                        VALUES (?,?,?,?,?)', event)
-
-        except sqlite3.Error as e:
-            print("An error occurred:", e.args[0])
-
-        object_index_current += 1
-        """ If this was the END of execution go for next file """
-        if str(event_action) == 'E':
-            """ All events covered, break out from loop """
-            break
-
-    """ Reset object counter for next file """
-    file_index_current += 1
-    object_index_current = 0
-
-    """ All done, commit to database and tidy after ourselves """
-    if len(file_list) == file_index_current:
-        print("Committing to database")
-        conn.commit()
-
-        conn.close()
-        gdb.execute("quit")
-    else:
-        gdb.execute("run")
-
-
 def trimZeros(str):
     for i in range(len(str))[::-1]:
         if str[i] != '\x00':
@@ -457,28 +360,53 @@ def ktest_iterate():
     """ Get the list of folders in current directory, sort and then grab the
         last one.
     """
+    global debug
+    global autobuild
+
     curdir = os.getcwd()
     if debug:
         print(curdir)
     """ We have already entered the output folder """
-    rustoutputfolder = "../target/x86_64-unknown-linux-gnu/debug/examples/"
+    rustoutputfolder = curdir + "/" + klee_out_folder
     try:
         os.chdir(rustoutputfolder)
     except IOError:
         print(rustoutputfolder + "not found. Need to run\n")
-        print("xargo build --release --example resource --features\
-              klee_mode --target x86_64-unknown-linux-gnu ")
-        sys.exit(1)
+        print("xargo build --example " + example_name + " --features" +
+              "klee_mode --target x86_64-unknown-linux-gnu ")
+        print("\nand docker run --rm --user (id -u):(id -g)" +
+              "-v $PWD" + "/" + klee_out_folder + ":/mnt" +
+              "-w /mnt -it afoht/llvm-klee-4 /bin/bash ")
+        if autobuild:
+            xargo_run("klee")
+            klee_run()
+        else:
+            print("Run the above commands before proceeding")
+            sys.exit(1)
+
+    if os.listdir(rustoutputfolder) == []:
+        """
+        The folder is empty, generate some files
+        """
+        xargo_run("klee")
+        klee_run()
 
     dirlist = next(os.walk("."))[1]
     dirlist.sort()
     if debug:
         print(dirlist)
+
+    if not dirlist:
+        print("No KLEE output, need to run KLEE")
+        print("Running klee...")
+        klee_run()
+
     try:
         directory = dirlist[-1]
     except IOError:
         print("No KLEE output, need to run KLEE")
-        sys.exit(1)
+        print("Running klee...")
+        klee_run()
 
     print("Using ktest-files from directory:\n" + rustoutputfolder + directory)
 
@@ -502,28 +430,60 @@ def tasklist_get():
 
     if debug:
         print(os.getcwd())
-    with open('../klee/tasks.txt') as fin:
+    with open('klee/tasks.txt') as fin:
             for line in fin:
                 # print(line)
                 if not line == "// autogenerated file\n":
                     return [x.strip().strip("[]\"") for x in line.split(',')]
 
 
-def klee_run():
-    """ Stub for running KLEE on the LLVM IR
-
+def xargo_run(mode):
     """
-    PWD = os.getcwd()
+    Run xargo for building
+    """
+
+    if "klee" in mode:
+        xargo_cmd = ("xargo build --example " + example_name + " --features " +
+                     "klee_mode --target x86_64-unknown-linux-gnu ")
+    elif "stm" in mode:
+        xargo_cmd = ("xargo build --release --example " + example_name +
+                     " --features " +
+                     "wcet_bkpt --target thumbv7em-none-eabihf")
+    else:
+        print("Provide either 'klee' or 'stm' as mode")
+        sys.exit(1)
+
+    call(xargo_cmd, shell=True)
+
+
+def klee_run():
+    """
+    Stub for running KLEE on the LLVM IR
+    """
+    global debug
+    global original_pwd
+
+    PWD = original_pwd
+
     user_id = subprocess.check_output(['id', '-u']).decode()
     group_id = subprocess.check_output(['id', '-g']).decode()
 
+    bc_file = (glob.glob(PWD + "/" +
+               klee_out_folder +
+               '*.bc', recursive=False))[-1].split('/')[-1].strip('\'')
+    if debug:
+        print(PWD + "/" + klee_out_folder)
+        print(bc_file)
+
     klee_cmd = ("docker run --rm --user " +
                 user_id[:-1] + ":" + group_id[:-1] +
-                " -v "
-                + PWD
-                + "/target/x86_64-unknown-linux-gnu/debug/examples:/mnt\
- -w /mnt -it afoht/llvm-klee-4 /bin/bash -c 'klee '*'.bc'")
-    print(klee_cmd)
+                " -v '"
+                + PWD + "/"
+                + klee_out_folder + "':'/mnt'" +
+                " -w /mnt -it afoht/llvm-klee-4 " +
+                "/bin/bash -c 'klee %s'" % bc_file)
+    if debug:
+        print(klee_cmd)
     call(klee_cmd, shell=True)
 
 
@@ -553,9 +513,20 @@ def gdb_cyccnt_write(num):
     gdb.execute('mon mww 0xe0001004 %r' % num)
 
 
+""" Check if the MCU code is compiled """
+try:
+    if os.listdir(stm_out_folder) == []:
+        """ There are no files, compile """
+        xargo_run("stm")
+        gdb.execute("file %s" % (stm_out_folder + example_name))
+        gdb.execute("load")
+except IOError:
+    xargo_run("stm")
+    gdb.execute("file %s" % (stm_out_folder + example_name))
+    gdb.execute("load")
+
 """ Run KLEE on the generated files """
 # print(klee_run())
-
 
 """ Break at main to set variable values """
 # AddBreakpoint("main")
