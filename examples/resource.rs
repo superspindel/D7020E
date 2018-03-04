@@ -51,8 +51,7 @@ fn exti1(t: &mut Threshold, EXTI1::Resources { X, mut Y }: EXTI1::Resources) {
         Y.claim_mut(t1, |y, _| {
             if *x < 10 {
                 for _ in 0..*x {
-                    //*y += 1;
-                    *y = (*y).wrapping_add(1);
+                    *y += 1;
                 }
             }
         });
@@ -63,8 +62,7 @@ fn exti1(t: &mut Threshold, EXTI1::Resources { X, mut Y }: EXTI1::Resources) {
 fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
     r.Y.claim_mut(t, |y, _| {
         if *y < 10 {
-            //*y += 1;
-            *y = (*y).wrapping_add(1);
+            *y += 1;
         } else {
             *y -= 1;
         }
@@ -74,8 +72,7 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
 #[allow(non_snake_case)]
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
-        //*x += 1;
-        *x = (*x).wrapping_add(1);
+        *x += 1;
     });
 }
 
@@ -499,3 +496,19 @@ fn idle() -> ! {
 //
 // Can you come up with a case where --release mode based analysis would miss cricital cases.
 // ** your answer here, --- actually a research question, we will discuss in class --- **
+//
+// On a side note.
+// Rust in --release mode makes the job for KLEE much easier. Look the number of instuctions carried out.
+// In dev/debug you had som 10 000 instuctions executed for generating the test cases.
+// In --relesase you had 34!!!!!
+//
+// This vastly improves on the performance of analysis, allowing larger applications to be scrutenized.
+// The code we looked at here was by intention simple (to facilitate inspection).
+// However, the code is NOT trivial, under the hood it utilizes advanced language features, such as
+// closures and intence use of abstractions, such as Traits/genecics etc. It indeed covers a large
+// degree of the Rust, for which it demonstrates that our approach to based program analysis
+// actually works.
+//
+// For the future we intend the framework to cover the reading and writing to peripherals, and the
+// sequenced access to resources. In class we will further discuss current limitations, and
+// oportunitios to improvements.
