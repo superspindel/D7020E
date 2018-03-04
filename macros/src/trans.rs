@@ -27,7 +27,12 @@ pub fn app(app: &App, ownerships: &Ownerships) -> Tokens {
     quote!(#(#root)*)
 }
 
-fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
+fn idle(
+    app: &App,
+    ownerships: &Ownerships,
+    main: &mut Vec<Tokens>,
+    root: &mut Vec<Tokens>,
+) {
     let krate = krate();
 
     let mut mod_items = vec![];
@@ -406,21 +411,33 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
     let init = &app.init.path;
 
     if !cfg!(feature = "klee_mode") {
-        // code generation for normal mode
-        main.push(quote! {
-            // type check
-            let init: fn(#(#tys,)*) #ret = #init;
+        // code generation for normal/wcet mode
+        if !cfg!(feature = "wcet_bkpt") {
+            // normal mode
+            main.push(quote! {
+                // type check
+                let init: fn(#(#tys,)*) #ret = #init;
 
-            #krate::atomic(unsafe { &mut #krate::Threshold::new(0) }, |_t| unsafe {
-                let _late_resources = init(#(#exprs,)*);
-                #(#late_resource_init)*
+                #krate::atomic(unsafe { &mut #krate::Threshold::new(0) }, |_t| unsafe {
+                    let _late_resources = init(#(#exprs,)*);
+                    #(#late_resource_init)*
 
-                #(#exceptions)*
-                #(#interrupts)*
+                    #(#exceptions)*
+                    #(#interrupts)*
+                });
             });
-        });
+        } else {
+            // wcet_mode
+            // panic!();
+            for (name, _task) in &app.tasks {
+                let _name = Ident::new(format!("stub_{}", name.as_ref()));
+                main.push(quote!{
+                    #_name();
+                });
+            }
+        }
     } else {
-        // code generation for klee mode
+        // code generation for klee_mode
         let mut tasks = vec![];
         let mut index: u32 = 0;
 
@@ -514,9 +531,10 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             for rname in &task.resources {
                 let ceiling = ownerships[rname].ceiling();
                 let _rname = Ident::new(format!("_{}", rname.as_ref()));
-                let resource = app.resources
-                    .get(rname)
-                    .expect(&format!("BUG: resource {} has no definition", rname));
+                let resource = app.resources.get(rname).expect(&format!(
+                    "BUG: resource {} has no definition",
+                    rname
+                ));
 
                 let ty = &resource.ty;
                 let _static = if resource.expr.is_some() {
@@ -652,6 +670,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
 
         let path = &task.path;
         let _tname = Ident::new(format!("_{}", tname));
+        let _stub_tname = Ident::new(format!("stub_{}", tname));
         let export_name = Lit::Str(tname.as_ref().to_owned(), StrStyle::Cooked);
         root.push(quote! {
             #[allow(non_snake_case)]
@@ -661,6 +680,13 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 let f: fn(#(#tys,)*) = #path;
 
                 f(#(#exprs,)*)
+            }
+
+            #[inline(never)]
+            #[no_mangle]
+            #[allow(non_snake_case)]
+            fn #_stub_tname() {
+                unsafe { #_tname(); }
             }
         });
 
