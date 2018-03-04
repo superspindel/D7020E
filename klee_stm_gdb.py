@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import gdb
 import os
 import sys
@@ -12,6 +13,8 @@ version_no = 3
 debug = False
 autobuild = True
 
+debug_file = "resource"
+
 klee_out_folder = 'target/x86_64-unknown-linux-gnu/debug/examples/'
 stm_out_folder = 'target/thumbv7em-none-eabihf/release/examples/'
 
@@ -19,7 +22,6 @@ file_list = []
 file_index_current = 0
 object_index_current = 0
 
-example_name = "resource"
 
 tasks = []
 task_to_test = 0
@@ -33,9 +35,6 @@ init_done = 0
 
 """ Max number of events guard """
 object_index_max = 100
-
-database_name = "klee_profiling"
-path = "output"
 
 """ Define the original working directory """
 original_pwd = os.getcwd()
@@ -114,7 +113,8 @@ class MainBP(gdb.Breakpoint):
     def stop(self):
         global init_done
 
-        if self.location == "init":
+        print("Breakpoint location: %s" % self.location)
+        if self.location == "main":
 
             if not init_done:
                 # gdb.prompt_hook = prompt
@@ -152,7 +152,7 @@ def stop_event(evt):
     except gdb.error:
 
         """
-        If there is no ceiling, it means we have returned to init
+        If there is no ceiling, it means we have returned to main
         since every claim have ceiling
         """
         # gdb.events.stop.disconnect(stop_event)
@@ -222,7 +222,7 @@ def prompt(current):
 def posted_event_init():
     """
     Called at the very beginning of execution
-    when the breakpoint at init() is hit
+    when the breakpoint at main() is hit
 
     Loads each defined task
 
@@ -339,6 +339,7 @@ def ktest_setdata(file_index):
             if debug:
                 print('object %4d: name: %r' % (i, name))
                 print('object %4d: size: %r' % (i, len(data)))
+                print(str)
             # if opts.writeInts and len(data) == 4:
             obj_data = struct.unpack('i', str)[0]
             if debug:
@@ -347,7 +348,7 @@ def ktest_setdata(file_index):
             # gdb.execute('whatis %r' % name.decode('UTF-8'))
             # gdb.execute('whatis %r' % obj_data)
             gdb.execute('set variable %s = %r' %
-                        (name.decode('UTF-8'), obj_data))
+                        (example_name + "::" + name.decode('UTF-8'), obj_data))
             # gdb.write('Variable %s is:' % name.decode('UTF-8'))
             # gdb.execute('print %s' % name.decode('UTF-8'))
             # else:
@@ -366,7 +367,7 @@ def ktest_iterate():
     curdir = os.getcwd()
     if debug:
         print(curdir)
-    """ We have already entered the output folder """
+
     rustoutputfolder = curdir + "/" + klee_out_folder
     try:
         os.chdir(rustoutputfolder)
@@ -401,6 +402,9 @@ def ktest_iterate():
         print("Running klee...")
         klee_run()
 
+    """ Ran KLEE, need to update the dirlist """
+    dirlist = next(os.walk("."))[1]
+    dirlist.sort()
     try:
         directory = dirlist[-1]
     except IOError:
@@ -513,39 +517,67 @@ def gdb_cyccnt_write(num):
     gdb.execute('mon mww 0xe0001004 %r' % num)
 
 
-""" Check if the MCU code is compiled """
-try:
-    if os.listdir(stm_out_folder) == []:
-        """ There are no files, compile """
+"""Used for making GDB scriptable"""
+gdb.execute("set confirm off")
+gdb.execute("set pagination off")
+gdb.execute("set verbose off")
+gdb.execute("set height 0")
+
+"""
+Setup GDB for remote debugging
+"""
+gdb.execute("target remote :3333")
+gdb.execute("monitor arm semihosting enable")
+
+"""
+Check if the user passed a file to use as the source.
+
+If a file is given, use this as the example_name
+"""
+if gdb.progspaces()[0].filename:
+    """ A filename was given on the gdb command line """
+    example_name = gdb.progspaces()[0].filename.split('/')[-1]
+    print("The resource used for debugging: %s" % example_name)
+    try:
+        os.path.exists(gdb.progspaces()[0].filename)
+    except IOError:
+        """ Compiles the given example """
         xargo_run("stm")
-        gdb.execute("file %s" % (stm_out_folder + example_name))
-        gdb.execute("load")
-except IOError:
-    xargo_run("stm")
-    gdb.execute("file %s" % (stm_out_folder + example_name))
-    gdb.execute("load")
+        xargo_run("klee")
+else:
+    example_name = debug_file
+    print("Defaulting to example '%s' for debugging." % example_name)
+    try:
+        if example_name not in os.listdir(stm_out_folder):
+            """ Compiles the default example """
+            xargo_run("stm")
+            xargo_run("klee")
+    except IOError:
+        """ Compiles the default example """
+        xargo_run("stm")
+        xargo_run("klee")
+
+""" Tell GDB to load the file """
+gdb.execute("file %s" % (stm_out_folder + example_name))
+gdb.execute("load %s" % (stm_out_folder + example_name))
+
+# gdb.execute("step")
 
 """ Run KLEE on the generated files """
 # print(klee_run())
 
 """ Break at main to set variable values """
 # AddBreakpoint("main")
-MainBP("init")
+MainBP("main")
 
 
 """ Tell gdb-dashboard to hide """
 # gdb.execute("dashboard -enabled off")
 # gdb.execute("dashboard -output /dev/null")
 
-""" Also break at the main-loop """
+""" Also break at the idle-loop """
 MainBP("idle")
 # MainBP("terminate_execution")
-
-"""Used for making it scriptable"""
-gdb.execute("set confirm off")
-gdb.execute("set pagination off")
-gdb.execute("set verbose off")
-gdb.execute("set height 0")
 
 """ Save all ktest files into an array """
 file_list = ktest_iterate()
