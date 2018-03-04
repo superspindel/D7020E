@@ -35,7 +35,7 @@ version = "0.2.0"
 path = "./klee"
 
 [features]
-wcet_bkpt = [] 
+wcet_bkpt = ["cortex-m-rtfm-macros/wcet_bkpt"] 
 wcet_nop = []
 klee_mode = ["cortex-m-rtfm-macros/klee_mode", "klee/klee_mode"] 
 
