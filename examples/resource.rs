@@ -482,6 +482,20 @@ fn idle() -> ! {
 // even remove comlete loops.
 //
 // Now lets have a look at using optimized LLVM and how it affects the number of tests.
-// >
-
-// So what is the benefit of a small crit
+// > xargo build --example resource --release --features klee_mode --target x86_64-unknown-linux-gnu
+//
+// and now start a docker for the optimized build
+// > docker run --rm --user $(id -u):$(id -g) -v $PWD/target/x86_64-unknown-linux-gnu/release/examples:/mnt -w /mnt -it afoht/llvm-klee-4 /bin/bash
+//
+// and in the docker run
+// > klee resource*.bc
+//
+// Look at the generated tests.
+// Motivate for each of the 5 test cases, which one it matches of the hand generated tests from Assignment 2.
+// ** your asnwers (5) here **
+//
+// Were the optimized tests sufficient to cover the execution time behavior.
+// ** your answer here **
+//
+// Can you come up with a case where --release mode based analysis would miss cricital cases.
+// ** your answer here, --- actually a research question, we will discuss in class --- **
