@@ -63,6 +63,31 @@ A docker daemon should be started/enabled.
 
 In the current folder:
 
+```
+arm-none-eabi-gdb -x klee_stm_gdb.py
+```
+
+The script will build for both KLEE and the MCU, run the KLEE tests and then proceed with testing the KLEE-generated values on the MCU.
+
+
+
+The steps described separately:
+
+### Compilation of KLEE input
+
+```
+xargo build --example example_name --features klee_mode --target x86_64-unknown-linux-gnu
+```
+
+### Compilation for benchmarking on MCU
+
+```
+xargo build --release --example example_name  --features wcet_bkpt --target thumbv7em-none-eabihf
+```
+
+### Running KLEE
+
+
 > docker run --rm --user $(id -u):$(id -g) -v $PWD/target/x86_64-unknown-linux-gnu/release/examples:/mnt -w /mnt -it afoht/llvm-klee-4 /bin/bash
 
 This starts a shell in the docker `llvm-klee-4`, with a shared mount to the examples directory, where your `panic1-xxxx.bc` is located.
@@ -78,6 +103,7 @@ To emit all the different errors, use
 this will generate a test-file for each and every path encountered.
 
 See KLEE for detailed information.
+
 
 Licensed under either of
 
