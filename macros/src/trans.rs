@@ -670,7 +670,6 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
 
         let path = &task.path;
         let _tname = Ident::new(format!("_{}", tname));
-        let _stub_tname = Ident::new(format!("stub_{}", tname));
         let export_name = Lit::Str(tname.as_ref().to_owned(), StrStyle::Cooked);
         root.push(quote! {
             #[allow(non_snake_case)]
@@ -681,14 +680,21 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
 
                 f(#(#exprs,)*)
             }
-
-            #[inline(never)]
-            #[no_mangle]
-            #[allow(non_snake_case)]
-            fn #_stub_tname() {
-                unsafe { #_tname(); }
-            }
         });
+
+        if cfg!(feature = "wcet_bkpt") {
+            let _stub_tname = Ident::new(format!("stub_{}", tname));
+            root.push(quote! {
+                #[inline(never)]
+                #[allow(private_no_mangle_fns)]
+                #[no_mangle]
+                #[allow(non_snake_case)]
+                fn #_stub_tname() {
+                    #[allow(unsafe_code)]
+                    unsafe { #_tname(); }
+                }
+            });
+        }
 
         root.push(quote!{
             #[allow(non_snake_case)]
