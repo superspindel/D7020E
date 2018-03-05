@@ -184,7 +184,7 @@ fn idle() -> ! {
 // The `gdbinit_manual` has the following content.
 // ```
 // target remote :3333
-// mon restet halt
+// mon reset halt
 // load
 // tb main
 // continue
