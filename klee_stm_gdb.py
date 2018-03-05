@@ -141,7 +141,6 @@ def stop_event(evt):
     global file_index_current
     global file_list
 
-    cyccnt = gdb_cyccnt_read()
     file_name = file_list[file_index_current].split('/')[-1]
     """
     Get the current ceiling level, cast it to an integer
@@ -155,7 +154,7 @@ def stop_event(evt):
         If there is no ceiling, it means we have returned to main
         since every claim have ceiling
         """
-        # gdb.events.stop.disconnect(stop_event)
+        cyccnt = gdb_cyccnt_read()
         outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
         gdb_cyccnt_reset()
 
@@ -166,13 +165,12 @@ def stop_event(evt):
             print("\nFinished all ktest files!\n")
             print("Claims:")
             for index, obj in enumerate(outputdata):
-                if obj[4] == 'Exit':
+                if obj[4] == "Exit":
                     claim_time = (obj[2] -
                                   outputdata[index - (offset)][2])
-                    # print("Claim time: %s" % claim_time)
                     print("%s Claim time: %s" % (obj, claim_time))
                     offset += 2
-                elif obj[4] == 'Finish' and not obj[2] == 0:
+                elif obj[4] == "Finish" and not obj[2] == 0:
                     offset = 1
                     tot_time = obj[2]
                     print("%s Total time: %s" % (obj, tot_time))
@@ -182,8 +180,6 @@ def stop_event(evt):
             gdb.execute("quit")
 
         return
-
-    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
 
     """
     If outputdata is empty, we start
@@ -197,12 +193,10 @@ def stop_event(evt):
     else:
         action = "Enter"
 
+    cyccnt = gdb_cyccnt_read()
     outputdata.append([file_name, task_name, cyccnt, ceiling, action])
 
-    """
-    Prepare a prompt for do_continue()
-    """
-    gdb.prompt_hook = prompt
+    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
     do_continue()
 
 
@@ -235,6 +229,7 @@ def posted_event_init():
 
     # print("Entering posted_event_init")
 
+    global init_done
     global tasks
     global task_to_test
     global task_name
@@ -246,6 +241,16 @@ def posted_event_init():
     ktest_setdata(file_index_current)
 
     """
+    If the number of the task is greater than the available tasks just finish
+    """
+    if task_to_test > len(tasks):
+        print("Nothing to call...")
+        init_done = 0
+        file_index_current += 1
+        gdb.post_event(posted_event_init)
+        return
+
+    """
     Prepare the cycle counter
     """
     gdb_cyccnt_enable()
@@ -253,15 +258,9 @@ def posted_event_init():
 
     # print("Tasks: ", tasks)
     # print("Name of task to test:", tasks[task_to_test])
-
-    if task_to_test > len(tasks):
-        print("Nothing to call...")
-        do_continue()
-        return
-
     if not task_to_test == -1:
-        task_name = tasks[task_to_test]
         file_name = file_list[file_index_current].split('/')[-1]
+        task_name = tasks[task_to_test]
         outputdata.append([file_name, task_name, 0, 0, "Start"])
 
         gdb.write('Task to call: %s \n' % (
