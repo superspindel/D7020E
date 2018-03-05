@@ -73,7 +73,7 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
         *x += 1;
-    });
+    })
 }
 
 #[inline(never)]
@@ -172,6 +172,12 @@ fn idle() -> ! {
 // The --features wcet_bkpt will insert a `bkpt` instruction on LOCK ond UNLOCK of
 // of each resource. This allows you to monitor the number of clock cyckles using gdb.
 //
+// Connect your Nucleo64 board with the `stm32f401re` (or `stm32f411re`) MCU.
+// Start openocd in a separate terminal (and let it run there).
+//
+// > openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+// (You may use `-f inteface/stlink-v2-1.cfg`, if `stlink.cfg` is missing.)
+//
 // Start gdb.
 // > arm-none-eabi-gdb -x gdbinit_manual target/thumbv7em-none-eabihf/release/examples/resource
 //
@@ -183,15 +189,15 @@ fn idle() -> ! {
 // tb main
 // continue
 //
-// Line by line it
+// Line by line, it:
 // - connects to the target (the MCU)
 // - resets the MCU
 // - loads the binary, in this case set to target/thumbv7em-none-eabihf/release/examples/resource
-// - sets a temporary breakpoint to `main`
+// - sets a temporary breakpoint to `main`, and
 // - continues executing until `main` is reached.
 //
-// At the point the MCU hits `main` you will be promted to continue working <return> or quit
-// press <return>
+// At the point the MCU hits `main` it stops.
+// (You may be promted to continue working <return> or quit, in such case press <return>.)
 //
 // Now you can inspect where the processor halted.
 // >  (gdb) list
@@ -250,16 +256,16 @@ fn idle() -> ! {
 //    0x08000276 <+14>:    bx      lr
 // End of assembler dump.
 //
-// Here you go, cannot be simpler that this, it
+// Here you go, cannot be simpler that this, it:
 // - sets up the address to X in r0
 // - reads the old value
 // - adds 1 (wrapping arithmetics)
-// - stores the new value in X
+// - stores the new value in X, and
 // - it returns
 // (On Cortex M functions and inerrupt handlers are essentially treated the same way)
 //
 // So now you can check the value of X. See above...
-// ++ your answer here **
+// ** your answer here **
 //
 // Now let us turn to EXTI2.
 // (gdb) mon mww 0xe0001004 0
@@ -267,7 +273,7 @@ fn idle() -> ! {
 // (gdb) mon mrw 0xe0001004
 // 13
 //
-// Also in this case we see that the resource (Y) was granted without overhead
+// Also in this case we see that the resource (`Y`) was granted without overhead
 // The code took a few additional clock cycles (its contians a condition, right).
 // Figure out which path was triggered by this test.
 // ** your answer here **
@@ -303,10 +309,12 @@ fn idle() -> ! {
 // End of assembler dump.
 //
 // This one is a bit harder to understand.
-// What it does essentially is to store -1 in r2
-// and conditionally overwrite the r2 by a 1 if `Y < 10`
-// and then add r2 to r1 (the current value of `Y`)
-// and update `Y` to r1.
+// What it does essentially is:
+// - read `Y` into r1,
+// - store -1 in r2
+// - conditionally overwrite the r2 by a 1 if `Y < 10`
+// - add r2 to r1 (the value of `Y`),
+// - update `Y`.
 //
 // So this is beautiful, the COSTLY branch is replaced by a CHEAP
 // condtitonal assigmnet `movcc`.
@@ -462,11 +470,11 @@ fn idle() -> ! {
 // At this point you should find that the worst case time stays the same ...
 //
 // Well, this one is not due to RTFM, its due to Rust and the cleverness of LLVM.
-// What it does is that it figures out that we actually incleas Y, by the value of X.
+// What it does is that it figures out that we actually increase `Y`, by the value of `X`.
 // So the loop is all gone, optimized out, and replaced by a simple addition.
 //
 // Now lets look at best case execution time.
-// Figure out an assignment of X, that might actually reduce the execution time.
+// Figure out an assignment of `X`, that might actually reduce the execution time.
 // ** your answer here **
 //
 // Redo the experiment with this value. How many clock cycles did you get?
@@ -489,7 +497,7 @@ fn idle() -> ! {
 //
 // Look at the generated tests.
 // Motivate for each of the 5 test cases, which one it matches of the hand generated tests from Assignment 2.
-// ** your asnwers (5) here **
+// ** your answers (5) here **
 //
 // Were the optimized tests sufficient to cover the execution time behavior.
 // ** your answer here **
@@ -511,4 +519,4 @@ fn idle() -> ! {
 //
 // For the future we intend the framework to cover the reading and writing to peripherals, and the
 // sequenced access to resources. In class we will further discuss current limitations, and
-// oportunitios to improvements.
+// oportunities to improvements.
