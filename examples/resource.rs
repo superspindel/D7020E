@@ -82,6 +82,7 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 
 #[inline(never)]
 #[allow(dead_code)]
+#[no_mangle]
 fn idle() -> ! {
     loop {
         rtfm::nop();
