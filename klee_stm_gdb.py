@@ -32,6 +32,7 @@ task_name = ""
 outputdata = []
 
 init_done = 0
+enable_output = 0
 
 """ Max number of events guard """
 object_index_max = 100
@@ -112,6 +113,7 @@ class MainBP(gdb.Breakpoint):
 
     def stop(self):
         global init_done
+        global enable_output
 
         print("Breakpoint location: %s" % self.location)
         if self.location == "main":
@@ -122,6 +124,13 @@ class MainBP(gdb.Breakpoint):
                 gdb.post_event(posted_event_init)
             else:
                 gdb.post_event(gather_data)
+
+        elif self.location == "idle":
+            print("Reached IDLE")
+            enable_output = 1
+            gdb_cyccnt_reset()
+            gdb.prompt_hook = prompt
+            return True
 
         """ Needed to actually stop after the breakpoint
             True: Return prompt
@@ -140,6 +149,7 @@ def stop_event(evt):
     global task_name
     global file_index_current
     global file_list
+    global enable_output
 
     file_name = file_list[file_index_current].split('/')[-1]
     """
@@ -155,7 +165,8 @@ def stop_event(evt):
         since every claim have ceiling
         """
         cyccnt = gdb_cyccnt_read()
-        outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
+        if enable_output:
+            outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
         gdb_cyccnt_reset()
 
         if file_index_current < len(file_list) - 1:
@@ -185,18 +196,20 @@ def stop_event(evt):
     If outputdata is empty, we start
     If the same ceiling as previously: exit
     """
-    if len(outputdata):
-        if outputdata[-1][3] >= ceiling:
-            action = "Exit"
+    # print("outputdata: %s" % outputdata)
+    if enable_output:
+        if len(outputdata):
+            if outputdata[-1][3] >= ceiling:
+                action = "Exit"
+            else:
+                action = "Enter"
         else:
             action = "Enter"
-    else:
-        action = "Enter"
 
-    cyccnt = gdb_cyccnt_read()
-    outputdata.append([file_name, task_name, cyccnt, ceiling, action])
+        cyccnt = gdb_cyccnt_read()
+        outputdata.append([file_name, task_name, cyccnt, ceiling, action])
 
-    print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
+        print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
     do_continue()
 
 
@@ -236,6 +249,7 @@ def posted_event_init():
     global file_index_current
     global file_list
     global outputdata
+    global enable_output
 
     """ Load the variable data """
     ktest_setdata(file_index_current)
@@ -248,6 +262,7 @@ def posted_event_init():
         init_done = 0
         file_index_current += 1
         gdb.post_event(posted_event_init)
+        # gdb.post_event(gather_data)
         return
 
     """
@@ -261,7 +276,8 @@ def posted_event_init():
     if not task_to_test == -1:
         file_name = file_list[file_index_current].split('/')[-1]
         task_name = tasks[task_to_test]
-        outputdata.append([file_name, task_name, 0, 0, "Start"])
+        if enable_output:
+            outputdata.append([file_name, task_name, 0, 0, "Start"])
 
         gdb.write('Task to call: %s \n' % (
                   tasks[task_to_test] + "()"))
@@ -568,6 +584,7 @@ gdb.execute("load %s" % (stm_out_folder + example_name))
 """ Break at main to set variable values """
 # AddBreakpoint("main")
 MainBP("main")
+MainBP("init")
 
 
 """ Tell gdb-dashboard to hide """
