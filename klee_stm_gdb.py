@@ -116,23 +116,29 @@ class MainBP(gdb.Breakpoint):
         global enable_output
 
         print("Breakpoint location: %s" % self.location)
-        if self.location == "main":
 
-            if not init_done:
-                # gdb.prompt_hook = prompt
-                init_done = 1
-                gdb.post_event(posted_event_init)
-            else:
-                gdb.post_event(gather_data)
-
-        elif self.location == "idle":
+        if self.location == "idle":
             print("Reached IDLE")
-            enable_output = 1
+            """
+            When reaching idle() it means all the stubs
+            has been executed and finished.
+
+            Enable output measurements and then proceed calling the
+            tasks
+            """
+
+            """
+            Prepare the cycle counter
+            """
+            gdb_cyccnt_enable()
             gdb_cyccnt_reset()
+
+            enable_output = 1
             gdb.prompt_hook = prompt
             return True
 
-        """ Needed to actually stop after the breakpoint
+        """
+        Needed to actually stop after the breakpoint
             True: Return prompt
             False: Continue?
         """
@@ -144,6 +150,12 @@ class MainBP(gdb.Breakpoint):
 def stop_event(evt):
     # print("#### stop event")
     # print("evt %r" % evt)
+    """
+    Every time a breakpoint is hit this function is executed
+
+    The MainBP class will also be executed
+
+    """
 
     global outputdata
     global task_name
@@ -240,7 +252,7 @@ def posted_event_init():
     """
     gdb.events.stop.connect(stop_event)
 
-    # print("Entering posted_event_init")
+    print("Entering posted_event_init")
 
     global init_done
     global tasks
@@ -265,10 +277,6 @@ def posted_event_init():
         # gdb.post_event(gather_data)
         return
 
-    """
-    Prepare the cycle counter
-    """
-    gdb_cyccnt_enable()
     gdb_cyccnt_reset()
 
     # print("Tasks: ", tasks)
@@ -299,6 +307,9 @@ def gather_data():
     global file_list
     global init_done
 
+    """
+    If not all ktest-files done yet, proceed
+    """
     if file_index_current < len(file_list):
         init_done = 0
         file_index_current += 1
@@ -583,8 +594,8 @@ gdb.execute("load %s" % (stm_out_folder + example_name))
 
 """ Break at main to set variable values """
 # AddBreakpoint("main")
-MainBP("main")
-MainBP("init")
+# MainBP("main")
+# MainBP("init")
 
 
 """ Tell gdb-dashboard to hide """
@@ -593,7 +604,6 @@ MainBP("init")
 
 """ Also break at the idle-loop """
 MainBP("idle")
-# MainBP("terminate_execution")
 
 """ Save all ktest files into an array """
 file_list = ktest_iterate()
@@ -604,6 +614,11 @@ tasks = tasklist_get()
 print("Available tasks:")
 for t in tasks:
     print(t)
+
+"""
+Subscribe stop_event to Breakpoint notifications
+"""
+gdb.events.stop.connect(stop_event)
 
 """ Run until the next breakpoint """
 gdb.execute("c")
