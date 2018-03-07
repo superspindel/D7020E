@@ -176,10 +176,10 @@ def stop_event(evt):
         If there is no ceiling, it means we have returned to main
         since every claim have ceiling
         """
-        cyccnt = gdb_cyccnt_read()
         if enable_output:
-            outputdata.append([file_name, task_name, cyccnt, 0, "Finish"])
-        gdb_cyccnt_reset()
+            outputdata.append([file_name, task_name,
+                               gdb_cyccnt_read(), 0, "Finish"])
+            gdb_cyccnt_reset()
 
         if file_index_current < len(file_list) - 1:
             gather_data()
@@ -277,22 +277,26 @@ def posted_event_init():
         # gdb.post_event(gather_data)
         return
 
-    gdb_cyccnt_reset()
-
     # print("Tasks: ", tasks)
     # print("Name of task to test:", tasks[task_to_test])
     if not task_to_test == -1:
+        """
+        Before the call to the next task, reset the cycle counter
+        """
+        gdb_cyccnt_reset()
+
         file_name = file_list[file_index_current].split('/')[-1]
         task_name = tasks[task_to_test]
+
         if enable_output:
-            outputdata.append([file_name, task_name, 0, 0, "Start"])
+            outputdata.append([file_name, task_name,
+                               gdb_cyccnt_read(), 0, "Start"])
 
         gdb.write('Task to call: %s \n' % (
                   tasks[task_to_test] + "()"))
         # gdb.prompt_hook = prompt
         gdb.execute('call %s' % "stub_" +
                     tasks[task_to_test] + "()")
-        # print("Called stub")
 
         task_to_test = -1
         do_continue()
