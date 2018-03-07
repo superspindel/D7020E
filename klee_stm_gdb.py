@@ -118,7 +118,6 @@ class MainBP(gdb.Breakpoint):
         print("Breakpoint location: %s" % self.location)
 
         if self.location == "idle":
-            print("Reached IDLE")
             """
             When reaching idle() it means all the stubs
             has been executed and finished.
@@ -133,6 +132,17 @@ class MainBP(gdb.Breakpoint):
             gdb_cyccnt_enable()
             gdb_cyccnt_reset()
 
+            """
+            Subscribe stop_event to Breakpoint notifications
+            and unsubscripe the stop_event_ignore
+            """
+
+            if not init_done:
+                gdb.events.stop.disconnect(stop_event_ignore)
+                init_done = 1
+
+            gdb.events.stop.connect(stop_event)
+
             enable_output = 1
             gdb.prompt_hook = prompt
             return True
@@ -146,7 +156,14 @@ class MainBP(gdb.Breakpoint):
         # return False
 
 
-# Subscribing to the stop events
+def stop_event_ignore(evt):
+    """
+    Ignore this breakpoint
+    """
+
+    do_continue()
+
+
 def stop_event(evt):
     # print("#### stop event")
     # print("evt %r" % evt)
@@ -222,6 +239,9 @@ def stop_event(evt):
         outputdata.append([file_name, task_name, cyccnt, ceiling, action])
 
         print("CYCCNT:  %s\nCeiling: %s" % (cyccnt, outputdata[-1][3]))
+
+        # gdb.post_event(posted_event_init)
+
     do_continue()
 
 
@@ -247,11 +267,6 @@ def posted_event_init():
 
     """
 
-    """
-    Subscribe stop_event to Breakpoint notifications
-    """
-    gdb.events.stop.connect(stop_event)
-
     print("Entering posted_event_init")
 
     global init_done
@@ -273,7 +288,7 @@ def posted_event_init():
         print("Nothing to call...")
         init_done = 0
         file_index_current += 1
-        gdb.post_event(posted_event_init)
+        # gdb.post_event(posted_event_init)
         # gdb.post_event(gather_data)
         return
 
@@ -301,7 +316,8 @@ def posted_event_init():
         task_to_test = -1
         do_continue()
     else:
-        print("Done else")
+        print("Error: Index out of range")
+        sys.exit(1)
 
 
 def gather_data():
@@ -315,7 +331,6 @@ def gather_data():
     If not all ktest-files done yet, proceed
     """
     if file_index_current < len(file_list):
-        init_done = 0
         file_index_current += 1
         # print("Current file: %s" % file_list[file_index_current])
         gdb.post_event(posted_event_init)
@@ -620,9 +635,10 @@ for t in tasks:
     print(t)
 
 """
-Subscribe stop_event to Breakpoint notifications
+Subscribe stop_event_ignore to Breakpoint notifications
+and skip the stubs
 """
-gdb.events.stop.connect(stop_event)
+gdb.events.stop.connect(stop_event_ignore)
 
 """ Run until the next breakpoint """
 gdb.execute("c")
