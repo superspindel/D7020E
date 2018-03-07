@@ -18,7 +18,9 @@ pub fn app(app: &App, ownerships: &Ownerships) -> Tokens {
     ::trans::tasks(app, ownerships, &mut root);
 
     root.push(quote! {
+        #[allow(private_no_mangle_fns)]
         #[allow(unsafe_code)]
+        //#[no_mangle]
         fn main() {
             #(#main)*
         }
@@ -427,14 +429,10 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
                 });
             });
         } else {
-            // wcet_mode
-            // panic!();
-            for (name, _task) in &app.tasks {
-                let _name = Ident::new(format!("stub_{}", name.as_ref()));
-                main.push(quote!{
-                    #_name();
-                });
-            }
+            // wcet_mode, call to wcet_start
+            main.push(quote! {
+                wcet_start();
+            });
         }
     } else {
         // code generation for klee_mode
@@ -710,6 +708,26 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 );
 
                 #(#items)*
+            }
+        });
+    }
+    if cfg!(feature = "wcet_bkpt") {
+        let mut stubs = vec![];
+        for (name, _task) in &app.tasks {
+            let _name = Ident::new(format!("stub_{}", name.as_ref()));
+            stubs.push(quote!{
+                #_name();
+            });
+        }
+
+        root.push(quote! {
+            extern crate cortex_m;
+            #[inline(never)]
+            #[allow(private_no_mangle_fns)]
+            #[no_mangle]
+            pub fn wcet_start() {
+                #(#stubs)*
+                cortex_m::asm::bkpt();
             }
         });
     }
