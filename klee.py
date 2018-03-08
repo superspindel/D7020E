@@ -86,52 +86,7 @@ def stop_event(evt):
 
     if imm == 3:
         print("Finished")
-
-    # try:
-    #     ceiling = int(gdb.parse_and_eval("ceiling").
-    #                   cast(gdb.lookup_type('u8')))
-    #     print("ceiling %r" % ceiling)
-    #     gdb_continue()
-
-    # except:
-    #     print("#### return")
-    #     return
-
-    #     # gdb_continue()
-    #     # gdb.post_event(next)
-    #     # next()
-
-
-# def next():
-#     global task_nr
-#     global tasks
-
-#     if task_nr == len(tasks):
-#         print("------------ all done ---------")
-#         return
-
-#     task_nr = task_nr + 1
-#     print("-------------- start {}-------------".format(task_nr))
-
-#     try:
-#         gdb.execute('call %s' % "stub_" + task + "()")
-#         print("-------------- finshed {}-------------".format(task_nr))
-#     except:
-
-#     next()
-
-# def next_event(next):
-#     global task_nr
-#     global tasks
-
-#     if task_nr == tasks.lenght():
-#         print("vvvvvvvvvvvvvvvvv")
-#         return
-#     print("-------------- start {}-------------".format(task_nr))
-#     gdb_call(tasks[t_nr])
-
-#     gdb.post_event(next)
-
+        gdb_continue()
 
 
 # globals
@@ -142,12 +97,6 @@ print("simple python script started")
 gdb_setup()
 gdb.events.stop.connect(stop_event)
 
-# gdb.events.next.connect(next_event)
-# gdb.post_event(next)
-
-
 for t_nr, t_index in enumerate(tasks):
-    try:
-        gdb_call(tasks[t_nr])
-    except:
-        print("--------------------fail")
+    print("-------------- t_nr {}".format(t_nr))
+    gdb_call(tasks[t_nr])
