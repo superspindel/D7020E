@@ -1,0 +1,92 @@
+
+target/thumbv7em-none-eabihf/release/examples/simple:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+080001d8 <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E>:
+ 80001d8:	f240 0000 	movw	r0, #0
+ 80001dc:	f240 0100 	movw	r1, #0
+ 80001e0:	f2c2 0000 	movt	r0, #8192	; 0x2000
+ 80001e4:	f2c2 0100 	movt	r1, #8192	; 0x2000
+ 80001e8:	4281      	cmp	r1, r0
+ 80001ea:	d208      	bcs.n	80001fe <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E+0x26>
+ 80001ec:	f240 0100 	movw	r1, #0
+ 80001f0:	2200      	movs	r2, #0
+ 80001f2:	f2c2 0100 	movt	r1, #8192	; 0x2000
+ 80001f6:	f841 2b04 	str.w	r2, [r1], #4
+ 80001fa:	4281      	cmp	r1, r0
+ 80001fc:	d3fb      	bcc.n	80001f6 <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E+0x1e>
+ 80001fe:	f240 000c 	movw	r0, #12
+ 8000202:	f240 0100 	movw	r1, #0
+ 8000206:	f2c2 0000 	movt	r0, #8192	; 0x2000
+ 800020a:	f2c2 0100 	movt	r1, #8192	; 0x2000
+ 800020e:	4281      	cmp	r1, r0
+ 8000210:	d20d      	bcs.n	800022e <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E+0x56>
+ 8000212:	f240 21b4 	movw	r1, #692	; 0x2b4
+ 8000216:	f240 0200 	movw	r2, #0
+ 800021a:	f6c0 0100 	movt	r1, #2048	; 0x800
+ 800021e:	f2c2 0200 	movt	r2, #8192	; 0x2000
+ 8000222:	f851 3b04 	ldr.w	r3, [r1], #4
+ 8000226:	f842 3b04 	str.w	r3, [r2], #4
+ 800022a:	4282      	cmp	r2, r0
+ 800022c:	d3f9      	bcc.n	8000222 <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E+0x4a>
+ 800022e:	b580      	push	{r7, lr}
+ 8000230:	466f      	mov	r7, sp
+ 8000232:	f64e 5088 	movw	r0, #60808	; 0xed88
+ 8000236:	f2ce 0000 	movt	r0, #57344	; 0xe000
+ 800023a:	6801      	ldr	r1, [r0, #0]
+ 800023c:	f441 0170 	orr.w	r1, r1, #15728640	; 0xf00000
+ 8000240:	6001      	str	r1, [r0, #0]
+ 8000242:	f000 f81b 	bl	800027c <_ZN11cortex_m_rt13reset_handler4main17h16e582aa055c56b3E>
+ 8000246:	e8bd 4080 	ldmia.w	sp!, {r7, lr}
+ 800024a:	bf30      	wfi
+ 800024c:	e7fd      	b.n	800024a <_ZN11cortex_m_rt13reset_handler17hcc1e0cbd9ca427e4E+0x72>
+	...
+
+08000250 <ADC>:
+ 8000250:	f000 b80f 	b.w	8000272 <BUS_FAULT>
+
+08000254 <_ZN6simple5exti117h4e0103028550e03eE>:
+ 8000254:	f240 0000 	movw	r0, #0
+ 8000258:	2208      	movs	r2, #8
+ 800025a:	f2c2 0000 	movt	r0, #8192	; 0x2000
+ 800025e:	6841      	ldr	r1, [r0, #4]
+ 8000260:	290a      	cmp	r1, #10
+ 8000262:	bf88      	it	hi
+ 8000264:	2205      	movhi	r2, #5
+ 8000266:	6082      	str	r2, [r0, #8]
+ 8000268:	4770      	bx	lr
+
+0800026a <EXTI1>:
+ 800026a:	f7ff bff3 	b.w	8000254 <_ZN6simple5exti117h4e0103028550e03eE>
+
+0800026e <_ZN11cortex_m_rt15default_handler17he14cdabe3be9cb17E>:
+ 800026e:	be00      	bkpt	0x0000
+ 8000270:	e7fe      	b.n	8000270 <_ZN11cortex_m_rt15default_handler17he14cdabe3be9cb17E+0x2>
+
+08000272 <BUS_FAULT>:
+ 8000272:	f3ef 8008 	mrs	r0, MSP
+ 8000276:	f7ff bffa 	b.w	800026e <_ZN11cortex_m_rt15default_handler17he14cdabe3be9cb17E>
+ 800027a:	defe      	udf	#254	; 0xfe
+
+0800027c <_ZN11cortex_m_rt13reset_handler4main17h16e582aa055c56b3E>:
+ 800027c:	f240 10d8 	movw	r0, #472	; 0x1d8
+ 8000280:	2101      	movs	r1, #1
+ 8000282:	f6c0 0000 	movt	r0, #2048	; 0x800
+ 8000286:	7800      	ldrb	r0, [r0, #0]
+ 8000288:	b672      	cpsid	i
+ 800028a:	f240 0000 	movw	r0, #0
+ 800028e:	f2c2 0000 	movt	r0, #8192	; 0x2000
+ 8000292:	7041      	strb	r1, [r0, #1]
+ 8000294:	7001      	strb	r1, [r0, #0]
+ 8000296:	f24e 4007 	movw	r0, #58375	; 0xe407
+ 800029a:	21f0      	movs	r1, #240	; 0xf0
+ 800029c:	f2ce 0000 	movt	r0, #57344	; 0xe000
+ 80002a0:	7001      	strb	r1, [r0, #0]
+ 80002a2:	f24e 1000 	movw	r0, #57600	; 0xe100
+ 80002a6:	2180      	movs	r1, #128	; 0x80
+ 80002a8:	f2ce 0000 	movt	r0, #57344	; 0xe000
+ 80002ac:	6001      	str	r1, [r0, #0]
+ 80002ae:	b662      	cpsie	i
+ 80002b0:	defe      	udf	#254	; 0xfe

@@ -3,14 +3,15 @@
 #![feature(proc_macro)]
 #![feature(used)]
 #![no_std]
-
+#![feature(asm)]
 extern crate cortex_m_rtfm as rtfm;
 // IMPORTANT always do this rename
 extern crate stm32f413;
 
 #[macro_use]
 extern crate klee;
-//use klee::k_abort;
+use klee::*;
+use rtfm::{bkpt_1, bkpt_2, bkpt_3};
 
 // import the procedural macro
 use rtfm::{app, Resource, Threshold};
@@ -73,7 +74,9 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
         *x += 1;
-    })
+    });
+    cortex_m::asm::bkpt();
+    cortex_m::asm::bkpt()
 }
 
 #[inline(never)]
@@ -82,8 +85,11 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 
 #[inline(never)]
 #[allow(dead_code)]
+#[allow(private_no_mangle_fns)]
 #[no_mangle]
 fn idle() -> ! {
+    let r = stub_EXTI1;
+    k_read(&r());
     loop {
         rtfm::nop();
     }

@@ -414,7 +414,12 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
 
     if !cfg!(feature = "klee_mode") {
         // code generation for normal/wcet mode
-        if !cfg!(feature = "wcet_bkpt") {
+        if cfg!(feature = "wcet_bkpt") || cfg!(feature = "wcet_nop") {
+            // wcet_mode, call to wcet_start
+            main.push(quote! {
+                wcet_start();
+            });
+        } else {
             // normal mode
             main.push(quote! {
                 // type check
@@ -427,11 +432,6 @@ fn init(app: &App, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
                     #(#exceptions)*
                     #(#interrupts)*
                 });
-            });
-        } else {
-            // wcet_mode, call to wcet_start
-            main.push(quote! {
-                wcet_start();
             });
         }
     } else {
@@ -483,10 +483,14 @@ fn resources(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
 
         root.push(match *expr {
             Some(ref expr) => quote! {
+                #[allow(private_no_mangle_statics)]
+                #[no_mangle]
                 static mut #_name: #ty = #expr;
             },
             None => quote! {
                 // Resource initialized in `init`
+                #[allow(private_no_mangle_statics)]
+                #[no_mangle]
                 static mut #_name: #krate::UntaggedOption<#ty> =
                     #krate::UntaggedOption { none: () };
             },
@@ -511,6 +515,25 @@ fn resources(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 #(#names)*
             }
         });
+    } else {
+        if cfg!(feature = "wcet_nop") || cfg!(feature = "wcet_bkpt") {
+            // collect the identifiers for our resources
+
+            let mut names = vec![];
+            for name in ownerships.keys() {
+                let _name = Ident::new(format!("_{}", name.as_ref()));
+                names.push(quote!{
+                    let _ = k_read(&#_name);
+                });
+            }
+
+            // generate a function reading all resources
+            root.push(quote!{
+                pub unsafe fn read_resources() {
+                    #(#names)*
+                }
+            });
+        }
     }
 }
 
@@ -680,7 +703,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             }
         });
 
-        if cfg!(feature = "wcet_bkpt") {
+        if cfg!(feature = "wcet_bkpt") || cfg!(feature = "wcet_nop") {
             let _stub_tname = Ident::new(format!("stub_{}", tname));
             root.push(quote! {
                 #[inline(never)]
@@ -690,6 +713,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 fn #_stub_tname() {
                     #[allow(unsafe_code)]
                     unsafe { #_tname(); }
+                    unsafe { bkpt_3(); }
                 }
             });
         }
@@ -711,12 +735,13 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             }
         });
     }
-    if cfg!(feature = "wcet_bkpt") {
+    if cfg!(feature = "wcet_bkpt") || cfg!(feature = "wcet_nop") {
         let mut stubs = vec![];
         for (name, _task) in &app.tasks {
             let _name = Ident::new(format!("stub_{}", name.as_ref()));
             stubs.push(quote!{
-                #_name();
+                //#_name();
+                let _ = k_read(&#_name);
             });
         }
 
@@ -726,9 +751,10 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             #[allow(private_no_mangle_fns)]
             #[no_mangle]
             pub fn wcet_start() {
+
                 #(#stubs)*
-                cortex_m::asm::bkpt();
             }
+
         });
     }
 }

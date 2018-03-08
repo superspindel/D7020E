@@ -80,6 +80,7 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![feature(proc_macro)]
+#![feature(asm)]
 #![no_std]
 
 extern crate cortex_m;
@@ -164,7 +165,7 @@ where
                     // wcet_bkpt mode
                     // put breakpoint at raise ceiling, for tracing execution time
                     if cfg!(feature = "wcet_bkpt") {
-                        bkpt();
+                        bkpt_1();
                     }
 
                     // wcet_nop mode
@@ -178,7 +179,7 @@ where
                     // wcet_bkpt mode
                     // put breakpoint at lower ceiling, for tracing execution time
                     if cfg!(feature = "wcet_bkpt") {
-                        bkpt();
+                        bkpt_2();
                     }
 
                     // wcet_nop mode
@@ -212,4 +213,37 @@ where
     // NOTE(safe) atomic write
     let mut nvic: NVIC = unsafe { mem::transmute(()) };
     nvic.set_pending(interrupt);
+}
+
+/// breakpoints with immediate field set, used for wcet analysis
+#[inline]
+pub unsafe fn bkpt_1() {
+    match () {
+        #[cfg(target_arch = "arm")]
+        () => asm!("bkpt #0x01" ::: "memory" : "volatile"),
+        #[cfg(not(target_arch = "arm"))]
+        () => unimplemented!(),
+    }
+}
+
+/// breakpoints with immediate field set, used for wcet analysis
+#[inline]
+pub unsafe fn bkpt_2() {
+    match () {
+        #[cfg(target_arch = "arm")]
+        () => asm!("bkpt #0x02" ::: "memory" : "volatile"),
+        #[cfg(not(target_arch = "arm"))]
+        () => unimplemented!(),
+    }
+}
+
+/// breakpoints with immediate field set, used for wcet analysis
+#[inline]
+pub unsafe fn bkpt_3() {
+    match () {
+        #[cfg(target_arch = "arm")]
+        () => asm!("bkpt #0x03" ::: "memory" : "volatile"),
+        #[cfg(not(target_arch = "arm"))]
+        () => unimplemented!(),
+    }
 }

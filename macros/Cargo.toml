@@ -24,3 +24,4 @@ proc-macro = true
 [features]
 klee_mode = [] 
 wcet_bkpt = [] 
+wcet_nop = [] 
