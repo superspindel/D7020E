@@ -45,6 +45,7 @@ def gdb_call(task):
     try:
         gdb.execute('call %s' % "stub_" + task + "()")
         print("<<<<<<<<<<<<<<<<< after call >>>>>>>>>>>>>>>>>")
+
     except gdb.error:
         print("!!!!!!!!!!!!!!!!! after call !!!!!!!!!!!!!!!!!")
 
@@ -59,38 +60,58 @@ def gdb_setup():
     print("gbd init")
     gdb.execute("set confirm off")
     gdb.execute("set pagination off")
-    gdb.execute("set verbose off")
-    gdb.execute("set height 0")
+    # gdb.execute("set verbose off")
+    # gdb.execute("set height 0")
     # gdb.execute("set unwindonsignal off")
+    # gdb.execute("set unwind-on-terminating-exception off")
     gdb.execute("set unwindonsignal on")
+    # gdb.execute("set unwind-on-terminating-exception on")
+
+    gdb.execute("show unwindonsignal")
+    gdb.execute("show unwind-on-terminating-exception")
+
 
 # Event handling
-
 # GDB event, called on breakpoint
 
 
 def stop_event(evt):
     print("#### stop event %r" % evt)
-
+    gdb.execute("break")
     imm = gdb_bkpt_read()
 
     print(" imm = {}".format(imm))
 
+    if imm == 0:
+        print("-- ordinary breakpoint --")
+        # gdb.execute("return")
+        # gdb_continue()
+
     if imm == 1:
         print("Enter")
-        gdb_continue()
+        # gdb.execute("return")
+        # gdb_continue()
 
     if imm == 2:
         print("Exit")
-        gdb_continue()
+        # gdb.execute("return")
+        # gdb_continue()
 
     if imm == 3:
         print("Finished")
-        gdb_continue()
+        # gdb.execute("return")
+
+
+def exit_handler(event):
+    print("event type: exit")
+    print("exit code: %d" % (event.exit_code))
+
+
+# gdb.events.inferior_call_post.connect(exit_handler)
 
 
 # globals
-tasks = ["EXTI2", "EXTI3", "EXTI1"]
+tasks = ["EXTI1"]
 task_nr = 0
 
 print("simple python script started")

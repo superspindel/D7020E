@@ -75,8 +75,8 @@ fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
         *x += 1;
     });
-    cortex_m::asm::bkpt();
-    cortex_m::asm::bkpt()
+    // cortex_m::asm::bkpt();
+    // cortex_m::asm::bkpt()
 }
 
 #[inline(never)]
