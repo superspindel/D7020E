@@ -29,12 +29,7 @@ pub fn app(app: &App, ownerships: &Ownerships) -> Tokens {
     quote!(#(#root)*)
 }
 
-fn idle(
-    app: &App,
-    ownerships: &Ownerships,
-    main: &mut Vec<Tokens>,
-    root: &mut Vec<Tokens>,
-) {
+fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
     let krate = krate();
 
     let mut mod_items = vec![];
@@ -552,10 +547,9 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             for rname in &task.resources {
                 let ceiling = ownerships[rname].ceiling();
                 let _rname = Ident::new(format!("_{}", rname.as_ref()));
-                let resource = app.resources.get(rname).expect(&format!(
-                    "BUG: resource {} has no definition",
-                    rname
-                ));
+                let resource = app.resources
+                    .get(rname)
+                    .expect(&format!("BUG: resource {} has no definition", rname));
 
                 let ty = &resource.ty;
                 let _static = if resource.expr.is_some() {
@@ -712,7 +706,9 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 #[allow(non_snake_case)]
                 fn #_stub_tname() {
                     #[allow(unsafe_code)]
+                    // call the task
                     unsafe { #_tname(); }
+                    // break for finish wcet measurement
                     unsafe { bkpt_3(); }
                 }
             });
@@ -740,19 +736,17 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
         for (name, _task) in &app.tasks {
             let _name = Ident::new(format!("stub_{}", name.as_ref()));
             stubs.push(quote!{
-                //#_name();
-                let x = k_read(&#_name);
-                unsafe { core::ptr::read_volatile(&x) };
+                #_name();
             });
         }
 
         root.push(quote! {
             extern crate cortex_m;
             #[inline(never)]
-            #[allow(private_no_mangle_fns)]
-            //#[no_mangle]
             pub fn wcet_start() {
+                // break for starting wcet measurement
                 unsafe { bkpt_3() };
+                // call each stub to avoind optimizing out
                 #(#stubs)*
             }
 

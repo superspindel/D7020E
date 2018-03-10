@@ -89,9 +89,7 @@ fn exit() {
 #[allow(non_snake_case)]
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
-        enter();
         *x += 1;
-        exit();
     });
 }
 
@@ -104,20 +102,6 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 #[allow(private_no_mangle_fns)]
 #[no_mangle]
 fn idle() -> ! {
-    let r = stub_EXTI1;
-    k_read(&r());
-    let r = stub_EXTI2;
-    k_read(&r());
-    let r = stub_EXTI3;
-    k_read(&r());
-    let r = _EXTI1;
-    unsafe { k_read(&r()) };
-    let r = _EXTI2;
-    unsafe { k_read(&r()) };
-    let r = _EXTI3;
-    unsafe { k_read(&r()) };
-    enter();
-    exit();
     loop {
         rtfm::nop();
     }
