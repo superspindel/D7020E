@@ -70,13 +70,25 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
     });
 }
 
+#[inline(never)]
+#[no_mangle]
+fn enter() {
+    rtfm::nop();
+}
+
+#[inline(never)]
+#[no_mangle]
+fn exit() {
+    rtfm::nop();
+}
+
 #[allow(non_snake_case)]
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
+        enter();
         *x += 1;
+        exit();
     });
-    // cortex_m::asm::bkpt();
-    // cortex_m::asm::bkpt()
 }
 
 #[inline(never)]
@@ -90,6 +102,12 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 fn idle() -> ! {
     let r = stub_EXTI1;
     k_read(&r());
+    let r = stub_EXTI2;
+    k_read(&r());
+    let r = stub_EXTI3;
+    k_read(&r());
+    enter();
+    exit();
     loop {
         rtfm::nop();
     }
