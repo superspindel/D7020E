@@ -73,13 +73,17 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
 #[inline(never)]
 #[no_mangle]
 fn enter() {
-    rtfm::nop();
+    unsafe {
+        rtfm::bkpt_1();
+    }
 }
 
 #[inline(never)]
 #[no_mangle]
 fn exit() {
-    rtfm::nop();
+    unsafe {
+        rtfm::bkpt_2();
+    }
 }
 
 #[allow(non_snake_case)]
@@ -106,6 +110,12 @@ fn idle() -> ! {
     k_read(&r());
     let r = stub_EXTI3;
     k_read(&r());
+    let r = _EXTI1;
+    unsafe { k_read(&r()) };
+    let r = _EXTI2;
+    unsafe { k_read(&r()) };
+    let r = _EXTI3;
+    unsafe { k_read(&r()) };
     enter();
     exit();
     loop {
