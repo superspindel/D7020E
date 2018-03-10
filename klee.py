@@ -47,7 +47,7 @@ def gdb_set_pc(task):
 def gdb_call(task):
     # call task
     print("#### call task %s" % task)
-    gdb.execute('call %s' % "stub_" + task + "()"a')
+    gdb.execute('call %s' % "stub_" + task + "()")
 
 
 def gdb_bkpt_read():
@@ -90,7 +90,7 @@ class Executor:
 
 def stop_event(evt):
     global task_nr
-    print("#### stop event %r" % evt)
+    # print("#### stop event %r" % evt)
     imm = gdb_bkpt_read()
 
     print(" imm = {}".format(imm))
@@ -126,7 +126,9 @@ def posted_event_init():
 
     if task_nr >= len(tasks):
         print("------------- tasks done")
-        gdb.execute("quit")
+        gdb.events.stop.disconnect(stop_event)
+        return
+        # gdb.execute("quit")
     else:
         try:
             gdb_call(tasks[task_nr])
