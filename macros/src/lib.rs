@@ -192,9 +192,9 @@ fn run(ts: TokenStream) -> Result<TokenStream> {
     if cfg!(feature = "klee_mode") {
         println!("tasks");
         let mut tasks = Vec::new();
-        for (id, _task) in app.tasks {
+        for (id, task) in app.tasks {
             println!("{}", id);
-            tasks.push(format!("{}", id));
+            tasks.push(format!("{} {}", id, task.priority));
         }
 
         let path = Path::new("klee/tasks.txt");

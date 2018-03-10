@@ -709,7 +709,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                     // call the task
                     unsafe { #_tname(); }
                     // break for finish wcet measurement
-                    unsafe { bkpt_3(); }
+                    unsafe { rtfm::bkpt_3(); }
                 }
             });
         }
@@ -745,7 +745,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             #[inline(never)]
             pub fn wcet_start() {
                 // break for starting wcet measurement
-                unsafe { bkpt_3() };
+                unsafe { rtfm::bkpt_3() };
                 // call each stub to avoind optimizing out
                 #(#stubs)*
             }

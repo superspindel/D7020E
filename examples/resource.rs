@@ -11,7 +11,7 @@ extern crate stm32f413;
 #[macro_use]
 extern crate klee;
 use klee::*;
-use rtfm::{bkpt_1, bkpt_2, bkpt_3};
+// use rtfm::{bkpt_1, bkpt_2, bkpt_3};
 
 // import the procedural macro
 use rtfm::{app, Resource, Threshold};
@@ -70,22 +70,6 @@ fn exti2(t: &mut Threshold, mut r: EXTI2::Resources) {
     });
 }
 
-#[inline(never)]
-#[no_mangle]
-fn enter() {
-    unsafe {
-        rtfm::bkpt_1();
-    }
-}
-
-#[inline(never)]
-#[no_mangle]
-fn exit() {
-    unsafe {
-        rtfm::bkpt_2();
-    }
-}
-
 #[allow(non_snake_case)]
 fn exti3(t: &mut Threshold, mut r: EXTI3::Resources) {
     r.X.claim_mut(t, |x, _| {
@@ -99,8 +83,6 @@ fn init(_p: init::Peripherals, _r: init::Resources) {}
 
 #[inline(never)]
 #[allow(dead_code)]
-#[allow(private_no_mangle_fns)]
-#[no_mangle]
 fn idle() -> ! {
     loop {
         rtfm::nop();
