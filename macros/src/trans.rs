@@ -29,7 +29,12 @@ pub fn app(app: &App, ownerships: &Ownerships) -> Tokens {
     quote!(#(#root)*)
 }
 
-fn idle(app: &App, ownerships: &Ownerships, main: &mut Vec<Tokens>, root: &mut Vec<Tokens>) {
+fn idle(
+    app: &App,
+    ownerships: &Ownerships,
+    main: &mut Vec<Tokens>,
+    root: &mut Vec<Tokens>,
+) {
     let krate = krate();
 
     let mut mod_items = vec![];
@@ -547,9 +552,10 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             for rname in &task.resources {
                 let ceiling = ownerships[rname].ceiling();
                 let _rname = Ident::new(format!("_{}", rname.as_ref()));
-                let resource = app.resources
-                    .get(rname)
-                    .expect(&format!("BUG: resource {} has no definition", rname));
+                let resource = app.resources.get(rname).expect(&format!(
+                    "BUG: resource {} has no definition",
+                    rname
+                ));
 
                 let ty = &resource.ty;
                 let _static = if resource.expr.is_some() {
@@ -707,7 +713,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
                 fn #_stub_tname() {
                     #[allow(unsafe_code)]
                     unsafe { #_tname(); }
-                    //unsafe { bkpt_3(); }
+                    unsafe { bkpt_3(); }
                 }
             });
         }
