@@ -10,13 +10,14 @@ import glob
 """ ktest file version """
 version_no = 3
 
-# debug = False
+#debug = False
 debug = True
 autobuild = True
 
 debug_file = "resource"
 
-klee_out_folder = 'target/x86_64-unknown-linux-gnu/debug/examples/'
+#klee_out_folder = 'target/x86_64-unknown-linux-gnu/debug/examples/'
+klee_out_folder = 'target/x86_64-unknown-linux-gnu/release/examples/'
 stm_out_folder = 'target/thumbv7em-none-eabihf/release/examples/'
 
 file_list = []
@@ -32,7 +33,7 @@ file_name = ""
 priority = 0
 first = True
 
-# [[ Test, Task, Cyccnt, priority/ceiling] Info]
+# [[ Test, Task, Cyccnt, priority/ceiling]]
 outputdata = []
 
 """ Max number of events guard """
@@ -132,23 +133,23 @@ def stop_event(evt):
     global priority
     global file_name
 
-    print("#### stop event {}".format(file_name))
-    print("evt %r" % evt)
+    if debug:
+        print("Debug: stop event in file {}".format(file_name))
+        print("Debug: evt %r" % evt)
 
     imm = gdb_bkpt_read()
     print(" imm = {}".format(imm))
 
     if imm == 0:
-        print("-- ordinary breakpoint, exiting --")
+        print("Ordinary breakpoint, exiting!")
         sys.exit(1)
 
     elif imm == 1 or imm == 2:
-
         try:
             ceiling = int(gdb.parse_and_eval(
                 "ceiling").cast(gdb.lookup_type('u8')))
         except:
-            print("No ceiling found, exciting")
+            print("No ceiling found, exciting!")
             sys.exit(1)
 
         if imm == 1:
@@ -156,23 +157,29 @@ def stop_event(evt):
         elif imm == 2:
             action = "Exit"
 
-        print(">>>>>>>>>>>>> Action {}".format(action))
+        if debug:
+            print("Debug: Append action {} at cycle {}".format(
+                action, gdb_cyccnt_read()))
+
         outputdata.append(
             [file_name, task_name, gdb_cyccnt_read(), ceiling, action])
 
         gdb.post_event(Executor("continue"))
 
     elif imm == 3:
-        print("------------- Finished {}".format(gdb_cyccnt_read()))
+        if debug:
+            print("Debug: found finish bkpt_3 at cycle {}".format(gdb_cyccnt_read()))
+
         gdb.post_event(Executor("si"))
-        print("------------- Finished posting events")
 
     elif imm == 4:
-        print("----------- Handle bkpt_4 ----------")
+        if debug:
+            print("Debug: found finish bkpt_4 at cycle {}".format(gdb_cyccnt_read()))
+
         gdb.post_event(posted_event_init)
 
     else:
-        print("#### error not bkpt instr ####")
+        print("Unexpected stop event, exiting")
         sys.exit(1)
 
 
@@ -180,10 +187,9 @@ def stop_event(evt):
 
 
 def posted_event_init():
+    if debug:
+        print("\nDebug: Entering posted_event_init")
 
-    print("\n\n\nEntering posted_event_init")
-
-    global init_done
     global tasks
     global task_name
     global file_name
@@ -194,43 +200,53 @@ def posted_event_init():
     global priorities
 
     if file_index_current < 0:
-        print("Skipped execution to first bkpt_3")
+        if debug:
+            print("Debug: Skipped first measurement")
+
     else:
+        if debug:
+            print("Debug: Append Finish action at cycle {}".format(gdb_cyccnt_read()))
+
         outputdata.append(
             [file_name, task_name, gdb_cyccnt_read(), priority, "Finish"])
 
-    if file_index_current < len(file_list) - 1:
+    """ loop to skip to next task *omitting the dummy* """
+    while True:
         file_index_current += 1
-        # print("Current file: %s" % file_list[file_index_current])
+        if file_index_current == len(file_list):
+            """ finished """
+            break
 
-        """ Load the variable data """
         task_to_test = ktest_setdata(file_index_current)
-
-        print("Task task_to_test {}".format(task_to_test))
-
         if 0 <= task_to_test < len(tasks):
-            print("!!!!!!!!!!!!!!!!!")
-            """
-            Before the call to the next task, reset the cycle counter
-            """
-            gdb_cyccnt_reset()
+            """ next """
+            break
 
-            file_name = file_list[file_index_current].split('/')[-1]
-            task_name = tasks[task_to_test]
-            priority = priorities[task_to_test]
+    if file_index_current < len(file_list):
+        """ Load the variable data """
 
-            outputdata.append([file_name, task_name,
-                               gdb_cyccnt_read(), priority, "Start"])
+        if debug:
+            print("Debug: Task number to test {}".format(task_to_test))
 
-            print('Task to call: %s \n' % (
-                tasks[task_to_test] + "()"))
-            gdb.execute('call %s' % "stub_" +
-                        tasks[task_to_test] + "()")
-        else:
-            print("-- dummy task ---------------------------------------------")
-            posted_event_init()
+        """
+        Before the call to the next task, reset the cycle counter
+        """
+        gdb_cyccnt_reset()
+
+        file_name = file_list[file_index_current].split('/')[-1]
+        task_name = tasks[task_to_test]
+        priority = priorities[task_to_test]
+
+        outputdata.append([file_name, task_name,
+                           gdb_cyccnt_read(), priority, "Start"])
+
+        print('Task to call: %s \n' % (
+            tasks[task_to_test] + "()"))
+        gdb.execute('call %s' % "stub_" +
+                    tasks[task_to_test] + "()")
 
     else:
+        """ here we are done, call your analysis here """
         offset = 1
         print("\nFinished all ktest files!\n")
         print("Claims:")
@@ -479,7 +495,8 @@ def gdb_bkpt_read():
     try:
         return int(gdb.execute("x/i $pc", False, True).split("bkpt")[1].strip("\t").strip("\n"), 0)
     except:
-        print("##### error parsing bkpt ######")
+        if debug:
+            print("Debug: It is not a bkpt so return 4")
         return 4
 
 
@@ -539,11 +556,13 @@ gdb_cyccnt_reset()
 
 """ Save all ktest files into an array """
 file_list = ktest_iterate()
-print(file_list)
 
 """ Get all the tasks to jump to """
 task_list = tasklist_get()
-print("task_list {}".format(task_list))
+
+if debug:
+    print("Debug: file_list {}".format(file_list))
+    print("Debug: task_list {}".format(task_list))
 
 """ Split into tasks and priorities """
 for x in task_list:
