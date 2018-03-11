@@ -590,65 +590,184 @@ gdb.execute("continue")
 
 # Home exam, response time analysis
 #
-# 1. run the example and study the output
-# it generates `output data`, a list of list, something like:
+# Assignment 1.
+# Run the example and study the output.
+#
+# It generates `output data`, a list of list, something like:
+# Finished all ktest files!
 # Claims:
-# ['', '', 56, 0, 'Finish'] Total time: 56
-# ['test000002.ktest', 'EXTI2', 0, '3', 'Start']
-# ['test000002.ktest', 'EXTI2', 11, '3', 'Finish'] Total time: 11
-# ['test000003.ktest', 'EXTI2', 0, '3', 'Start']
-# ['test000003.ktest', 'EXTI2', 11, '3', 'Finish'] Total time: 11
-# ['test000004.ktest', 'EXTI3', 0, '2', 'Start']
-# ['test000004.ktest', 'EXTI3', 8, '2', 'Finish'] Total time: 8
+# ['test000002.ktest', 'EXTI1', 0, '1', 'Start']
+# ['test000002.ktest', 'EXTI1', 15, 2, 'Enter']
+# ['test000002.ktest', 'EXTI1', 19, 3, 'Enter']
+# ['test000002.ktest', 'EXTI1', 28, 3, 'Exit'] Claim time: 9
+# ['test000002.ktest', 'EXTI1', 29, 2, 'Exit'] Claim time: 14
+# ['test000002.ktest', 'EXTI1', 36, '1', 'Finish'] Total time: 36
+# ['test000003.ktest', 'EXTI3', 0, '2', 'Start']
+# ['test000003.ktest', 'EXTI3', 8, '2', 'Finish'] Total time: 8
+# ['test000004.ktest', 'EXTI2', 0, '3', 'Start']
+# ['test000004.ktest', 'EXTI2', 11, '3', 'Finish'] Total time: 11
 # ['test000005.ktest', 'EXTI1', 0, '1', 'Start']
 # ['test000005.ktest', 'EXTI1', 15, 2, 'Enter']
 # ['test000005.ktest', 'EXTI1', 19, 3, 'Enter']
-# ['test000005.ktest', 'EXTI1', 28, 3, 'Exit'] Claim time: 9
-# ['test000005.ktest', 'EXTI1', 29, 2, 'Exit'] Claim time: 14
-# ['test000005.ktest', 'EXTI1', 36, '1', 'Finish'] Total time: 36...
+# ['test000005.ktest', 'EXTI1', 29, 3, 'Exit'] Claim time: 10
+# ['test000005.ktest', 'EXTI1', 30, 2, 'Exit'] Claim time: 15
+# ['test000005.ktest', 'EXTI1', 37, '1', 'Finish'] Total time: 37
 #
-# first entry
-# ['test000001.ktest', ....
-# is our bogus test, not of interest for the analysis)
+# test000001.ktest is a dummy task and skipped
+# ['test000002.ktest', 'EXTI1', 0, 1, 'Start']
+# ['test000002.ktest', 'EXTI2', 15, 2, 'Enter']
 #
-# next entries:
-#['test000002.ktest', 'EXTI2', 0, 3, 'Start']
-#['test000002.ktest', 'EXTI2', 11, 3, 'Finish'] Total time: 11
-# amounts to the first real task
 # broken down, the first measurement
 # -'test000002.ktest'       the ktest file
-# -'EXTI2'                  the task
+# -'EXTI1'                  the task
 # -'0'                      the time stamp (start from zero)
-# -'3'                      the threshold (priority 3)
+# -'1'                      the threshold (priority 1)
 # -'Start'                  the 'Start' event
 #
 # broken down, the second measurement
 # -'test000002.ktest'       the ktest file
-# -'EXTI2'                  the task
-# -'11'                     the time stamp (start from zero)
-# -'3'                      the threshold (priority 3)
-# -'Finish'                 the 'Start' event
+# -'EXTI1'                  the task
+# -'15'                     the time stamp of the 'Enter'
+# -'2'                      the threshold (ceiling 2) of X
+# -'Enter'                  the 'Enter' event
 #
-# followed by
-# Total time: 11
-#
-# let us look at the following measurements
-#
-# 'test000003.ktest'
-# recall from the lab that we had two cases for EXTI2
-# both with the same result
-#
-# 'test000004.ktest'
-# recall from the lab that we had a singel test for EXTI3
-#
-# and finally
-#
-# 'test000005.ktest' and on ... for EXTI1
-# here at prio 1, and after 15 cycles claim X, raising threshold to 2
 # after 19 cycles we clam Y, raising treshold to 3
 # after 28 cycles we exit the Y claim, threshold 3 *before unlock Y*
 # after 29 cycles we exit the X claim, threshold 2 *before unlock X*
 # and finally we finish at 36 clock cycles
 #
-# Reecall we had some 13, 9, 39 in the lab, this is due to details
+# The differences to the hand made measurements are due to details
 # of the gdb integration regarding the return behavior.
+#
+# Verify that you can repeat the experiment.
+# The order of tasks/test may differ but it should look similar.
+#
+# Try follow what is going on in the test bed.
+#
+#
+# Assignment 2.
+#
+# The vector
+# interarrival = [100, 30, 40]
+# should match the arrival time of EXTI1, EXTI2, and EXTI3 respectively
+# you may need to change the order depending or your klee/tasks.txt file
+# (in the future interrarrival and deadlines will be in the RTFM model,
+# but for now we introduce them by hand)
+#
+# Implement function that takes output data and computes the CPU demand
+# (total utilization factor) Up of
+# http://www.di.unito.it/~bini/publications/2003BinButBut.pdf
+#
+# For this example it should be
+# EXTI1 = 37/100
+# EXTI2 = 11/30
+# EXTI3 = 8/40
+# ------------
+# sum   = 0.93666
+# So we are inside the total utilization bound <1
+#
+# Your implementation should be generic though
+# Looking up the WCETs from the `output_data`.
+# (It may be a good idea to make first pass and extract wcet per task)
+##
+# The total utililization bound allows us to discard task sets that are obviously illegal.debug
+# (not the case here though)
+#
+# Assignment3.
+#
+# Under SRP response time can be computed by equation 7.22 from
+# https://doc.lagout.org/science/0_Computer%20Science/2_Algorithms/Hard%20Real-Time%20Computing%20Systems_%20Predictable%20Scheduling%20Algorithms%20and%20Applications%20%283rd%20ed.%29%20%5BButtazzo%202011-09-15%5D.pdf
+#
+# In general the response time is computed as.
+# Ri =  Ci + Bi + Ii
+# Ci the WCET of task i
+# Bi the blockng time task i is exposed to
+# Ii the interference (preemptions) task is exposed to
+#
+# where
+# Pi the priority of task i
+# Ai the interrarval of task i
+#
+# We assign deadline = interrarival and priorties inverse to deadline
+# (rate monotonic assignment, with fixed/static priorities)
+#
+# Lets start by looking at EXTI2 whith the highest priority, so no interference (preemption)
+# R_EXTI2 = 11 + B_EXTI2 + 0
+#
+# In general Bi is the max time of any lower priority task (EXIT1, EXTI3 in our case)
+# holds a resource with a ceiling > Pi (ceileng >= 3 in this case)
+# B_EXTI2 = 10 (EXTI1 holding Y for 10 cycles)
+#
+# Notice 1, single blocking, we can only be blocked ONCE, so bound priority inversion
+#
+# Notice 2, `output_data` does not hold info on WHAT exect resource is held
+# (merely each 'claim time at a specific ceiling'). However this is sufficient for the analysis.
+#
+# so
+# R_EXTI2 = 11 + 10 = 21, well below our 30 cycle margin
+#
+# Let's look at EXTI3, our mid prio task.
+# R_EXTI3 = C_EXTI3 + B_EXTI3 + I_EXTI3
+# where I_EXTI3 is the interference (preemptions)
+#
+# Here we can undertake a simple approach to start out.
+# Assume a deadline equal to our interarraval (50)
+# I_EXTI3 is the sum of ALL preemptions until its deadlne.
+# in this case EXTI2 can preempt us 2 times (40/30 *rounded upwards*)
+# I_EXTI3 = 2 * 11
+#
+# The worst case blocking time is 15 (caused by the lower prio task EXTI1 holding X)
+# R_EXTI3 = 8 + 2 * 11 + 15 = 45, already here we see that EXTI2 may miss its deadline
+#
+# EXTI1 (our lowest prio task)
+# R_EXTI1 = C_EXTI1 + B_EXTI1 + I_EXTI1
+#
+# Here we cannot be blocked (as we have the lowest prio)
+# I_EXTI1 is the sum of preemptions from EXTI2 and EXTI3
+# our deadline = interarravial is 100
+# we are exposed to 100/30 = 4 (rounded upwards) preepmtions by EXTI2
+# and 100/40 = 3 (rounded upwards) preempions by EXTI3
+#
+# I_EXTI1 = 37 + 4 * 11 + 3 * 8 = 105
+#
+# Ouch, even though we had only a WCET of 37 we might miss our deadline.
+# However we might have overestimated the problem.
+#
+# Assignment 4.
+# Looking closer at 7.22 we see that its a recurrent equation.
+# Ri(0) indicating the inital value
+# Ri(0) = Ci + Bi
+# while
+# Ri(s) = Ci + Bi + sum ..(Ri(s-1))..
+# so Ri(1) is computed from Ri(0) and so forth,
+# this requires a recursive or looping implmentation.
+#
+# One can see that as initially setting a "busy period" to Ci+Bi
+# and compute a new (longer) "busy period" by taking into accout preemptions.
+#
+# Termination:
+# Either Ri(s) = Ri(s-1), we have a fixpoint and have the exact response time
+# or we hit Ri(s) > Ai, we have missed our deadline
+#
+# Your final assignment is to implement the exact method.
+#
+# Notice, we have not dealt with the case where tasks have equal priorities
+# in theory this is not a problem (no special case needed)
+#
+# However, for exactly analysing the taskset as it would run on the real hardware
+# requires some (minor) modifications. *Not part of this assignment*
+#
+# Examination for full score.
+# Make a git repo of your solution. (With reasonable comments)
+#
+# It should be possible to compile and run, and for the example
+# Print utilization according to Assignment 2
+# Print response times according to Assignment 3
+# Print response times according to Assignment 4
+#
+# It should work with different assignments of the interrarival vector.
+# test it also for
+# [100, 40, 50]
+# [80, 30, 40]
+# (Verify that your resoults are correct by hand computations)
+#
