@@ -771,3 +771,8 @@ gdb.execute("continue")
 # [80, 30, 40]
 # (Verify that your resoults are correct by hand computations)
 #
+# Grading
+# For this part 1/3 of the exam 35 points
+# Assignment 2, 10 points
+# Assingment 3, 10 points
+# Assingment 4, 15 points
