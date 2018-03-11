@@ -261,7 +261,7 @@ def posted_event_init():
                 print("%s Total time: %s" % (obj, tot_time))
             else:
                 print("%s" % (obj))
-        # comment out to prevent gdb from finishing, useful to debugging
+        # comment out to prevent gdb from quit on finish, useful to debugging
         gdb.execute("quit")
 
 
