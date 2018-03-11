@@ -10,7 +10,7 @@ import glob
 """ ktest file version """
 version_no = 3
 
-#debug = False
+# debug = False
 debug = True
 autobuild = True
 
@@ -133,12 +133,11 @@ def stop_event(evt):
     global priority
     global file_name
 
+    imm = gdb_bkpt_read()
     if debug:
         print("Debug: stop event in file {}".format(file_name))
         print("Debug: evt %r" % evt)
-
-    imm = gdb_bkpt_read()
-    print(" imm = {}".format(imm))
+        print("Debug: imm = {}".format(imm))
 
     if imm == 0:
         print("Ordinary breakpoint, exiting!")
@@ -262,8 +261,8 @@ def posted_event_init():
                 print("%s Total time: %s" % (obj, tot_time))
             else:
                 print("%s" % (obj))
-
-        # gdb.execute("quit")
+        # comment out to prevent gdb from finishing, useful to debugging
+        gdb.execute("quit")
 
 
 def trimZeros(str):
@@ -281,12 +280,14 @@ def ktest_setdata(file_index):
     global file_list
     global debug
 
-    print("[[[[[[[[[[[[[[[[ ktest_setdata {}".format(file_index))
+    if debug:
+        print("Debug: ktest_setdata on index{}".format(file_index))
+
     b = KTest.fromfile(file_list[file_index])
-    print("[[[[[[[[[[[[[[[[[[here")
+
     if debug:
         # print('ktest filename : %r' % filename)
-        gdb.write('ktest file: %r \n' % file_list[file_index])
+        print('Debug: ktest file: %r \n' % file_list[file_index])
         # print('args       : %r' % b.args)
         # print('num objects: %r' % len(b.objects))
     for i, (name, data) in enumerate(b.objects):
@@ -295,8 +296,8 @@ def ktest_setdata(file_index):
         """ If Name is "task", skip it """
         if name.decode('UTF-8') == "task":
             if debug:
-                print('object %4d: name: %r' % (i, name))
-                print('object %4d: size: %r' % (i, len(data)))
+                print('Debug: object %4d: name: %r' % (i, name))
+                print('Debug: object %4d: size: %r' % (i, len(data)))
             # print(struct.unpack('i', str).repr())
             # task_to_test = struct.unpack('i', str)[0]
             # print("str: ", str)
@@ -304,16 +305,16 @@ def ktest_setdata(file_index):
             task_to_test = struct.unpack('i', str)[0]
             # task_to_test = int(str[0])
             if debug:
-                print("Task to test:", task_to_test)
+                print("Debug: Task to test:", task_to_test)
         else:
             if debug:
-                print('object %4d: name: %r' % (i, name))
-                print('object %4d: size: %r' % (i, len(data)))
+                print('Debug: object %4d: name: %r' % (i, name))
+                print('Degug: object %4d: size: %r' % (i, len(data)))
                 print(str)
             # if opts.writeInts and len(data) == 4:
             obj_data = struct.unpack('i', str)[0]
             if debug:
-                print('object %4d: data: %r' %
+                print('Dubug: object %4d: data: %r' %
                       (i, obj_data))
             # gdb.execute('whatis %r' % name.decode('UTF-8'))
             # gdb.execute('whatis %r' % obj_data)
@@ -323,10 +324,9 @@ def ktest_setdata(file_index):
             # gdb.execute('print %s' % name.decode('UTF-8'))
             # else:
             # print('object %4d: data: %r' % (i, str))
-    print("---------------------------------------- ktest_set_end")
 
     if debug:
-        print("Done with setdata")
+        print("Dubug: Done with setdata")
     return task_to_test
 
 
@@ -339,7 +339,7 @@ def ktest_iterate():
 
     curdir = os.getcwd()
     if debug:
-        print("Current directory {}".format(curdir))
+        print("Debug: Current directory {}".format(curdir))
 
     rustoutputfolder = curdir + "/" + klee_out_folder
     try:
@@ -420,7 +420,7 @@ def tasklist_get():
 def xargo_run(mode):
 
     if "klee" in mode:
-        xargo_cmd = ("xargo build --example " + example_name + " --features " +
+        xargo_cmd = ("xargo build --release --example " + example_name + " --features " +
                      "klee_mode --target x86_64-unknown-linux-gnu ")
     elif "stm" in mode:
         xargo_cmd = ("xargo build --release --example " + example_name +
