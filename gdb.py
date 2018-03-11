@@ -8,7 +8,7 @@ import subprocess
 import glob
 
 """ ktest file version """
-version_no = 4
+version_no = 3
 
 # debug = False
 debug = True
@@ -20,18 +20,17 @@ klee_out_folder = 'target/x86_64-unknown-linux-gnu/debug/examples/'
 stm_out_folder = 'target/thumbv7em-none-eabihf/release/examples/'
 
 file_list = []
-file_index_current = 0
+file_index_current = -1
 object_index_current = 0
-
 
 tasks = []
 priorities = []
 
-task_to_test = 0
-
 task_name = ""
+file_name = ""
 
 priority = 0
+first = True
 
 # [[ Test, Task, Cyccnt, priority/ceiling] Info]
 outputdata = []
@@ -43,29 +42,7 @@ object_index_max = 100
 original_pwd = os.getcwd()
 
 
-def gather_data():
-
-    global outputdata
-    global file_index_current
-    global file_list
-    global init_done
-
-    """
-    If not all ktest-files done yet, proceed
-    """
-    if file_index_current < len(file_list):
-        file_index_current += 1
-        # print("Current file: %s" % file_list[file_index_current])
-        gdb.post_event(posted_event_init)
-
-    else:
-        print("Finished everything")
-
-        print(outputdata)
-
-        """ ... call your analysis here ... """
-
-        gdb.execute("quit")
+""" taken from KLEE """
 
 
 class KTestError(Exception):
@@ -150,21 +127,16 @@ Every time a breakpoint is hit this function is executed
 
 
 def stop_event(evt):
-    print("#### stop event")
-    print("evt %r" % evt)
-
     global outputdata
     global task_name
-    global file_index_current
-    global file_list
     global priority
+    global file_name
 
-    file_name = file_list[file_index_current].split('/')[-1]
+    print("#### stop event {}".format(file_name))
+    print("evt %r" % evt)
 
     imm = gdb_bkpt_read()
     print(" imm = {}".format(imm))
-
-    cyccnt = gdb_cyccnt_read()
 
     if imm == 0:
         print("-- ordinary breakpoint, exiting --")
@@ -176,7 +148,7 @@ def stop_event(evt):
             ceiling = int(gdb.parse_and_eval(
                 "ceiling").cast(gdb.lookup_type('u8')))
         except:
-            print("No ceiling found, exeting")
+            print("No ceiling found, exciting")
             sys.exit(1)
 
         if imm == 1:
@@ -185,40 +157,23 @@ def stop_event(evt):
             action = "Exit"
 
         print(">>>>>>>>>>>>> Action {}".format(action))
-        outputdata.append([file_name, task_name, cyccnt, ceiling, action])
+        outputdata.append(
+            [file_name, task_name, gdb_cyccnt_read(), ceiling, action])
 
         gdb.post_event(Executor("continue"))
 
     elif imm == 3:
-        print("------------- Finished")
-        # gdb.execute("si")
-        gdb.execute("return")
+        print("------------- Finished {}".format(gdb_cyccnt_read()))
+        gdb.post_event(Executor("si"))
+        print("------------- Finished posting events")
 
+    elif imm == 4:
+        print("----------- Handle bkpt_4 ----------")
         gdb.post_event(posted_event_init)
 
-        outputdata.append([file_name, task_name,
-                           gdb_cyccnt_read(), priority, "Finish"])
-
-        if file_index_current < len(file_list) - 1:
-            gather_data()
-        else:
-            offset = 1
-            print("\nFinished all ktest files!\n")
-            print("Claims:")
-            for index, obj in enumerate(outputdata):
-                if obj[4] == "Exit":
-                    claim_time = (obj[2] -
-                                  outputdata[index - (offset)][2])
-                    print("%s Claim time: %s" % (obj, claim_time))
-                    offset += 2
-                elif obj[4] == "Finish" and not obj[2] == 0:
-                    offset = 1
-                    tot_time = obj[2]
-                    print("%s Total time: %s" % (obj, tot_time))
-                else:
-                    print("%s" % (obj))
-
-            gdb.execute("quit")
+    else:
+        print("#### error not bkpt instr ####")
+        sys.exit(1)
 
 
 """ Loads each defined task """
@@ -231,42 +186,68 @@ def posted_event_init():
     global init_done
     global tasks
     global task_name
+    global file_name
     global file_index_current
     global file_list
     global outputdata
     global priority
     global priorities
 
-    """ Load the variable data """
-    ktest_setdata(file_index_current)
+    if file_index_current < 0:
+        print("Skipped execution to first bkpt_3")
+    else:
+        outputdata.append(
+            [file_name, task_name, gdb_cyccnt_read(), priority, "Finish"])
 
-    """
-    If the number of the task is greater than the available tasks just finish
-    """
-    if task_to_test > len(tasks):
-        print("Nothing to call...")
-        init_done = 0
+    if file_index_current < len(file_list) - 1:
         file_index_current += 1
-        return
+        # print("Current file: %s" % file_list[file_index_current])
 
-    # print("Tasks: ", tasks)
-    # print("Name of task to test:", tasks[task_to_test])
-    """
-    Before the call to the next task, reset the cycle counter
-    """
-    gdb_cyccnt_reset()
+        """ Load the variable data """
+        task_to_test = ktest_setdata(file_index_current)
 
-    file_name = file_list[file_index_current].split('/')[-1]
-    task_name = tasks[task_to_test]
-    priority = priorities[task_to_test]
+        print("Task task_to_test {}".format(task_to_test))
 
-    outputdata.append([file_name, task_name,
-                       gdb_cyccnt_read(), priority, "Start"])
+        if 0 <= task_to_test < len(tasks):
+            print("!!!!!!!!!!!!!!!!!")
+            """
+            Before the call to the next task, reset the cycle counter
+            """
+            gdb_cyccnt_reset()
 
-    gdb.write('Task to call: %s \n' % (
-        tasks[task_to_test] + "()"))
-    gdb.execute('call %s' % "stub_" +
-                tasks[task_to_test] + "()")
+            file_name = file_list[file_index_current].split('/')[-1]
+            task_name = tasks[task_to_test]
+            priority = priorities[task_to_test]
+
+            outputdata.append([file_name, task_name,
+                               gdb_cyccnt_read(), priority, "Start"])
+
+            print('Task to call: %s \n' % (
+                tasks[task_to_test] + "()"))
+            gdb.execute('call %s' % "stub_" +
+                        tasks[task_to_test] + "()")
+        else:
+            print("-- dummy task ---------------------------------------------")
+            posted_event_init()
+
+    else:
+        offset = 1
+        print("\nFinished all ktest files!\n")
+        print("Claims:")
+        for index, obj in enumerate(outputdata):
+            if obj[4] == "Exit":
+                claim_time = (obj[2] -
+                              outputdata[index - (offset)][2])
+                print("%s Claim time: %s" % (obj, claim_time))
+                offset += 2
+            elif obj[4] == "Finish" and not obj[2] == 0:
+                offset = 1
+                tot_time = obj[2]
+                print("%s Total time: %s" % (obj, tot_time))
+            else:
+                print("%s" % (obj))
+
+        # gdb.execute("quit")
 
 
 def trimZeros(str):
@@ -282,10 +263,11 @@ def ktest_setdata(file_index):
     Substitute every variable found in ktest-file
     """
     global file_list
-    global task_to_test
     global debug
 
+    print("[[[[[[[[[[[[[[[[ ktest_setdata {}".format(file_index))
     b = KTest.fromfile(file_list[file_index])
+    print("[[[[[[[[[[[[[[[[[[here")
     if debug:
         # print('ktest filename : %r' % filename)
         gdb.write('ktest file: %r \n' % file_list[file_index])
@@ -325,8 +307,11 @@ def ktest_setdata(file_index):
             # gdb.execute('print %s' % name.decode('UTF-8'))
             # else:
             # print('object %4d: data: %r' % (i, str))
+    print("---------------------------------------- ktest_set_end")
+
     if debug:
         print("Done with setdata")
+    return task_to_test
 
 
 def ktest_iterate():
@@ -491,7 +476,11 @@ def gdb_cyccnt_write(num):
 
 def gdb_bkpt_read():
     # Read imm field of the current bkpt
-    return int(gdb.execute("x/i $pc", False, True).split("bkpt")[1].strip("\t").strip("\n"), 0)
+    try:
+        return int(gdb.execute("x/i $pc", False, True).split("bkpt")[1].strip("\t").strip("\n"), 0)
+    except:
+        print("##### error parsing bkpt ######")
+        return 4
 
 
 print("\n\n\nStarting script")
@@ -546,7 +535,7 @@ gdb.execute("load %s" % (stm_out_folder + example_name))
 
 """ Enable the cycle counter """
 gdb_cyccnt_enable()
-
+gdb_cyccnt_reset()
 
 """ Save all ktest files into an array """
 file_list = ktest_iterate()
@@ -585,20 +574,19 @@ gdb.execute("continue")
 # 1. run the example and study the output
 # it generates `output data`, a list of list, something like:
 # Claims:
-# ['test000001.ktest', '', 22095438, 0, 'Finish'] Total time: 22095438
+# ['', '', 56, 0, 'Finish'] Total time: 56
 # ['test000002.ktest', 'EXTI2', 0, '3', 'Start']
 # ['test000002.ktest', 'EXTI2', 11, '3', 'Finish'] Total time: 11
 # ['test000003.ktest', 'EXTI2', 0, '3', 'Start']
 # ['test000003.ktest', 'EXTI2', 11, '3', 'Finish'] Total time: 11
 # ['test000004.ktest', 'EXTI3', 0, '2', 'Start']
-# ['test000004.ktest', 'EXTI3', 7, '2', 'Finish'] Total time: 7
+# ['test000004.ktest', 'EXTI3', 8, '2', 'Finish'] Total time: 8
 # ['test000005.ktest', 'EXTI1', 0, '1', 'Start']
 # ['test000005.ktest', 'EXTI1', 15, 2, 'Enter']
 # ['test000005.ktest', 'EXTI1', 19, 3, 'Enter']
 # ['test000005.ktest', 'EXTI1', 28, 3, 'Exit'] Claim time: 9
 # ['test000005.ktest', 'EXTI1', 29, 2, 'Exit'] Claim time: 14
-# ['test000005.ktest', 'EXTI1', 32, '1', 'Finish'] Total time: 32
-# ['test000006.ktest', 'EXTI1', 0, '1', 'Start']...
+# ['test000005.ktest', 'EXTI1', 36, '1', 'Finish'] Total time: 36...
 #
 # first entry
 # ['test000001.ktest', ....
@@ -641,6 +629,7 @@ gdb.execute("continue")
 # after 19 cycles we clam Y, raising treshold to 3
 # after 28 cycles we exit the Y claim, threshold 3 *before unlock Y*
 # after 29 cycles we exit the X claim, threshold 2 *before unlock X*
-# and finally we finish at 34 clock cycles
+# and finally we finish at 36 clock cycles
 #
-# (recall we had some 38 in the lab, this is due mesuring)
+# Reecall we had some 13, 9, 39 in the lab, this is due to details
+# of the gdb integration regarding the return behavior.

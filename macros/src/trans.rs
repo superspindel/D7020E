@@ -746,6 +746,7 @@ fn tasks(app: &App, ownerships: &Ownerships, root: &mut Vec<Tokens>) {
             pub fn wcet_start() {
                 // break for starting wcet measurement
                 unsafe { rtfm::bkpt_3() };
+                rtfm::nop();
                 // call each stub to avoind optimizing out
                 #(#stubs)*
             }
