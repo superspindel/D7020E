@@ -501,7 +501,7 @@ def gdb_bkpt_read():
     try:
         return int(gdb.execute("x/i $pc", False, True).
                    split("bkpt")[1].strip("\t").strip("\n"), 0)
-    except gdb.error:
+    except:
         if debug:
             print("Debug: It is not a bkpt so return 4")
         return 4
