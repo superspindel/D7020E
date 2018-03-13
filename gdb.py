@@ -599,6 +599,7 @@ gdb.execute("continue")
 #
 # Assignment 1.
 # Run the example and study the output.
+# you may need to run xargo clean first
 #
 # It generates `output data`, a list of list, something like:
 # Finished all ktest files!
@@ -647,7 +648,8 @@ gdb.execute("continue")
 # of the gdb integration regarding the return behavior.
 #
 # Verify that you can repeat the experiment.
-# The order of tasks/test may differ but it should look similar.
+# The order of tasks/test and cycles may differ but it should look similar.
+# Two tests for EXTI1 and one for EXTI2 and one for EXTI3
 #
 # Try follow what is going on in the test bed.
 #
@@ -678,7 +680,7 @@ gdb.execute("continue")
 # (It may be a good idea to make first pass and extract wcet per task)
 ##
 # The total utilisation bound allows us to discard task sets that are
-# obviously illegal.debug (not the case here though)
+# obviously illegal (not the case here though)
 #
 # Assignment 3.
 #
@@ -711,8 +713,8 @@ gdb.execute("continue")
 # so bound priority inversion
 #
 # Notice 2, `output_data` does not hold info on WHAT exact resource is held
-# (merely each 'claim time at a specific ceiling').
-# However this is sufficient for the analysis.
+# merely timestamp information on each Enter/Exit and associated level.
+# This is however sufficient for the analysis.
 #
 # so
 # R_EXTI2 = 11 + 10 = 21, well below our 30 cycle margin
@@ -722,7 +724,7 @@ gdb.execute("continue")
 # where I_EXTI3 is the interference (preemptions)
 #
 # Here we can undertake a simple approach to start out.
-# Assume a deadline equal to our interarrival (50)
+# Assuming a deadline equal to our interarrival (40)
 # I_EXTI3 is the sum of ALL preemptions until its deadline.
 # in this case EXTI2 can preempt us 2 times (40/30 *rounded upwards*)
 # I_EXTI3 = 2 * 11
@@ -730,7 +732,7 @@ gdb.execute("continue")
 # The worst case blocking time is 15
 # (caused by the lower prio task EXTI1 holding X)
 # R_EXTI3 = 8 + 2 * 11 + 15 = 45, already here we see that
-# EXTI2 may miss its deadline
+# EXTI2 may miss our deadline (40)
 #
 # EXTI1 (our lowest prio task)
 # R_EXTI1 = C_EXTI1 + B_EXTI1 + I_EXTI1
@@ -745,6 +747,9 @@ gdb.execute("continue")
 #
 # Ouch, even though we had only a WCET of 37 we might miss our deadline.
 # However we might have overestimated the problem.
+#
+# Implement the algorithm in a generic manner
+# Verify that that the results are correct by hand computation (or make an Excel)
 #
 # Assignment 4.
 # Looking closer at 7.22 we see that its a recurrent equation.
