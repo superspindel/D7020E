@@ -194,7 +194,7 @@ fn run(ts: TokenStream) -> Result<TokenStream> {
         let mut tasks = Vec::new();
         for (id, task) in app.tasks {
             println!("{}", id);
-            tasks.push(format!("{} {}", id, task.priority));
+            tasks.push(format!("{} {} {}", id, task.priority, task.interarrival));
         }
 
         let path = Path::new("klee/tasks.txt");

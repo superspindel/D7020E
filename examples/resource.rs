@@ -29,18 +29,21 @@ app! {
         EXTI1: {
             path: exti1,
             priority: 1,
+            interarrival: 100,
             resources: [X, Y],
         },
 
         EXTI2: {
             path: exti2,
             priority: 3,
+            interarrival: 40,
             resources: [Y],
         },
 
         EXTI3: {
             path: exti3,
             priority: 2,
+            interarrival: 30,
             resources: [X],
         },
     },

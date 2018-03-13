@@ -26,6 +26,7 @@ object_index_current = 0
 
 tasks = []
 priorities = []
+interarrival = []
 
 task_name = ""
 file_name = ""
@@ -573,6 +574,7 @@ if debug:
 
 """ Split into tasks and priorities """
 for x in task_list:
+    interarrival.append(x.pop())
     priorities.append(x.pop())
     tasks.append(x.pop())
 
@@ -584,6 +586,9 @@ print("At priorities:")
 for t in priorities:
     print(t)
 
+print("At interarrivals:")
+for t in interarrival:
+    print(t)
 
 """ Subscribe stop_event_ignore to Breakpoint notifications """
 gdb.events.stop.connect(stop_event)

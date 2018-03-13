@@ -51,6 +51,7 @@ pub struct Task {
     pub kind: Kind,
     pub path: Path,
     pub priority: u8,
+    pub interarrival: u32,
     pub resources: Resources,
 }
 
@@ -165,6 +166,7 @@ fn task(name: &str, task: syntax::check::Task) -> Result<Task> {
         kind,
         path: task.path.ok_or("`path` field is missing")?,
         priority: task.priority.unwrap_or(1),
+        interarrival: task.interarrival.unwrap_or(1),
         resources: task.resources,
     })
 }
