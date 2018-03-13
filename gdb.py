@@ -678,7 +678,7 @@ gdb.execute("continue")
 # Your implementation should be generic though
 # Looking up the WCETs from the `output_data`.
 # (It may be a good idea to make first pass and extract wcet per task)
-##
+#
 # The total utilisation bound allows us to discard task sets that are
 # obviously illegal (not the case here though)
 #
@@ -752,6 +752,7 @@ gdb.execute("continue")
 # Verify that that the results are correct by hand computation (or make an Excel)
 #
 # Assignment 4.
+#
 # Looking closer at 7.22 we see that its a recurrent equation.
 # Ri(0) indicating the initial value
 # Ri(0) = Ci + Bi
@@ -795,3 +796,21 @@ gdb.execute("continue")
 # Assignment 2, 10 points
 # Assignment 3, 10 points
 # Assignment 4, 15 points
+#
+# To make sure the analysis works in the general case
+# you can make further examles based on 'resource.rs'
+#
+# Notice, KLEE analysis does not work on hardware peripherals
+# (this is not yet supported), so your new examples must NOT access
+# any peripherals.
+#
+# HINTS
+# You may start by cut and paste the output (table) to a file 'x.py'
+#
+# Implement the analysis in a seprate python file 'x.py'
+# (reconstruct the 'outputdata' from the table)
+#
+# When you have your analysis working,
+# integrate it in this script (operating on the real 'outputdata')
+#
+#
