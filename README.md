@@ -67,7 +67,7 @@ A docker daemon should be started/enabled.
 In the current folder:
 
 ```
-arm-none-eabi-gdb -x klee.py
+arm-none-eabi-gdb -x gdb.py
 ```
 
 The script will build for both KLEE and the MCU, run the KLEE tests and then proceed with testing the KLEE-generated values on the MCU.
