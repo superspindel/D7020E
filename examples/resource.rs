@@ -36,14 +36,14 @@ app! {
         EXTI2: {
             path: exti2,
             priority: 3,
-            interarrival: 40,
+            interarrival: 30,
             resources: [Y],
         },
 
         EXTI3: {
             path: exti3,
             priority: 2,
-            interarrival: 30,
+            interarrival: 40,
             resources: [X],
         },
     },
