@@ -14,6 +14,9 @@ use klee::*;
 // use rtfm::{bkpt_1, bkpt_2, bkpt_3};
 
 // import the procedural macro
+// # [100, 30, 40]
+// # [100, 40, 50]
+// # [80, 30, 40]
 use rtfm::{app, Resource, Threshold};
 
 app! {
@@ -30,6 +33,8 @@ app! {
             path: exti1,
             priority: 1,
             interarrival: 100,
+            //interarrival: 100,
+            //interarrival: 80,
             resources: [X, Y],
         },
 
@@ -37,6 +42,8 @@ app! {
             path: exti2,
             priority: 3,
             interarrival: 30,
+            //interarrival: 40,
+            //interarrival: 30,
             resources: [Y],
         },
 
@@ -44,6 +51,8 @@ app! {
             path: exti3,
             priority: 2,
             interarrival: 40,
+            //interarrival: 50,
+            //interarrival: 40,
             resources: [X],
         },
     },

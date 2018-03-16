@@ -6,6 +6,7 @@ import struct
 from subprocess import call
 import subprocess
 import glob
+import math
 
 """ ktest file version """
 version_no = 3
@@ -249,6 +250,7 @@ def posted_event_init():
                     tasks[task_to_test] + "()")
 
     else:
+        claim_time_list = []
         """ here we are done, call your analysis here """
         offset = 1
         print("\nFinished all ktest files!\n")
@@ -258,6 +260,7 @@ def posted_event_init():
                 claim_time = (obj[2] -
                               outputdata[index - (offset)][2])
                 print("%s Claim time: %s" % (obj, claim_time))
+                claim_time_list.append([obj[1], obj[3], claim_time]) # name, prio, claim_time
                 offset += 2
             elif obj[4] == "Finish" and not obj[2] == 0:
                 offset = 1
@@ -265,8 +268,144 @@ def posted_event_init():
                 print("%s Total time: %s" % (obj, tot_time))
             else:
                 print("%s" % (obj))
+        
+        outputlist = calc_cpu(outputdata)
+        calc_response(claim_time_list, outputlist)
+        recursive_setup(claim_time_list, outputlist)
         # comment out to prevent gdb from quit on finish, useful to debugging
         gdb.execute("quit")
+
+"""
+    Calculate the CPU burden on the system, also returns a nicer outputlist from the outputdata array which contains all the neccessary data needed
+    for further calculations in the assignments. Calculates CPU by checking total time of every task vs the interarrival time of the task and adding up.
+    @input outputdata: The raw data from the tasks, including claims, exit and entering of these claims, starts and finishes of tasks and total times of tasks.
+"""
+
+def calc_cpu(outputdata):
+    outputlist = []
+    for outputline in outputdata: # Loop through data
+        if outputline[4] == "Finish" and not outputline[2] == 0:
+            new_line = [] # name, total_time, interval, priority
+            new_line.append(outputline[1]) # Add name, example "EXTI1"
+            new_line.append(outputline[2]) # Total time
+            for task in tasklist_get():
+                if task[0] == new_line[0]: # check task name vs name of the line of data that was read
+                    new_line.append(task[2]) # interval time)
+                    new_line.append(task[1]) # priority
+            outputlist.append(new_line) # add task data to outputlist
+    
+    # remove duplicates
+    new_list = []
+    print(outputlist)
+    for line in outputlist:
+        if line[0] not in [x[0] for x in new_list]: # Check if name already in new_list
+            new_list.append(line)
+        else:
+            duplicate = [x for x in new_list if x[0] == line[0]][0] # get the duplicate from new_list
+            if line[1] > duplicate[1]: # check if total time is bigger
+                new_list.remove(duplicate)
+                new_list.append(line)
+
+    # sort list for printout and further use of the list in response_time calculations, sorted based on min priority
+    sorted_list = []
+    while(len(new_list)>0):
+        min_prio_task = new_list[0] # example task to have something to check agains
+        for task in new_list:
+            if task[3] < min_prio_task[3]: # check if new task has lower priority the previous min_prio_task
+                min_prio_task = task
+        sorted_list.append(min_prio_task) # add task to new sorted list
+        new_list.remove(min_prio_task)    # remove from old list
+    total = 0
+    print ("\n ASSIGNMENT 2 \n")
+    for item in sorted_list:
+        print(str(item[0])+ " = "+str(item[1])+"/"+str(item[2]))
+        total += int(item[1])/int(item[2]) # calculate CPU demand for each task and add to total
+    print("---------------------")
+    print(total)
+    return sorted_list
+
+"""
+    Calculate the response time of the tasks in the outputlist as per the predefined calculation without recursion
+    @input claim_time_list: the list of claims as gathered in the posted_event_init loop with [name, prio, claim_time] for every claim
+    @input outputlist: List of tasks to have their response calculated upon
+    OBS! could've gone through and made the claim_time_list exclusive before this but felt that it worked and performed as needed so didnt change it.
+"""
+def calc_response(claim_time_list, outputlist):
+    responselist = []
+    for task in outputlist: # loop through all tasks in the list
+        max_claim = 0          
+        for claim in claim_time_list:
+            if(int(claim[1]) == int(task[3]) and int(claim[2]) > max_claim): # check if claim is related to this tasks priority, and if bigger then previous max claim time
+                max_claim = int(claim[2])
+        list_of_preemptions = [preemptive_task for preemptive_task in outputlist if preemptive_task[3] > task[3]] # get all tasks that can preempt the current task via priority checking
+        sum_of_preemptions = []
+        for preemptive_task in list_of_preemptions:
+            sum_of_preemptions.append(math.ceil(int(task[2])/int(preemptive_task[2]))*preemptive_task[1]) # sum up total preemption cost of the tasks that can preempt this task
+        total_response_time = 0
+        total_response_time += task[1]      # total_time
+        total_response_time += max_claim    # max_claim
+        for preemption in sum_of_preemptions:
+            total_response_time += preemption   # sum of preemptions
+        responselist.append([task[0], total_response_time])
+    print("\n ASSIGNMENT 3 \n")
+    for response in responselist:
+        print(str(response[0])+": Response time = "+str(response[1]))
+
+"""
+    Setup list for the recursive function, so to contain all necessary data for calculation
+    OBS! Could've been done 100 times nicer with oop, but didnt want to break the flow of lists with lists xD
+    @input claim_time_list: the list of claims as gathered in the posted_event_init loop with [name, prio, claim_time] for every claim
+    @input outputlist: List of tasks to have their response calculated upon
+"""
+def recursive_setup(claim_time_list, outputlist): #claim list => name, prio, claim_time
+    task_list = []
+    for task in outputlist: # name, total_time, interval, priority
+        task_list.append([task[2], [claim for claim in claim_time_list if str(claim[0]) == str(task[0])], task[3], task[1], 0, task[0]])
+        # above is [interval, [claims], prioritys, total_time, response_time, name]
+    
+    # Remove duplicate claims, only take max value that every task can preempt another task
+    exclusive_claim_list = []
+    for claim in claim_time_list:
+        duplicate = [dupclaim for dupclaim in exclusive_claim_list if dupclaim[1] == claim[1]]
+        if len(duplicate) > 0:
+            if claim[2] > duplicate[0][2]:
+                exclusive_claim_list.append(claim)
+                exclusive_claim_list.remove(duplicate[0])
+        else:
+            exclusive_claim_list.append(claim)
+
+    rec_resp(list(reversed(task_list)), 0, exclusive_claim_list) # reverse to start with highest priority for this calculation
+    print("\n ASSIGNMENT 4 \n")
+    for line in task_list:
+        print(str(line[5])+" : "+str(line[4]) + " STATUS : "+str(line[6]))
+    
+"""
+    The recursive task that calculates the response time
+    @input tasklist: The list of tasks to be calculated upon, ex [EXTI1, EXTI2, EXTI3]. The EXTIX objects are lists with data needed for calculation
+    @input index: The current task in the tasklist currently being calculated
+    @input exclusive_claim_list: The list of claims that have been done with only the maximum claims concearning every task in them
+
+"""
+def rec_resp(tasklist, index, exclusive_claim_list):
+    if index > (len(tasklist)-1): # list is done 
+        return
+    new_response = int(tasklist[index][3]) # total_time : wcet
+    max_claim = 0   # max claim concearning this task
+    for claim in exclusive_claim_list:
+        if(int(claim[1]) == int(tasklist[index][2]) and int(claim[2] > max_claim)): # check if priority of claim matches priority of task and if bigger then current max_claim 
+            max_claim = int(claim[2])
+    new_response += int(max_claim) # add the claim time to new_response variable
+    for i in range(0, index): # loop through tasks with higher priority 
+        number_of_times_taken = math.ceil(int(tasklist[index][4])/int(tasklist[i][0]))  # calculate number of times it can preempt
+        new_response += int(number_of_times_taken) * int(tasklist[i][3])                # add the preemption time to new response
+    if (int(new_response) == int(tasklist[index][4]) or int(new_response) > int(tasklist[index][0])): # check if new_response is equal to previous response calculated or bigger then interarrival time
+        tasklist[index][4] = int(new_response)                      # set finished response
+        tasklist[index].append("OK" if int(new_response) < int(tasklist[index][0]) else "FAIL") # Set status depending on if the task can finish in time
+        index += 1 # change to next task in line
+        rec_resp(tasklist, index, exclusive_claim_list) # RECURSIVE call
+    else:
+        tasklist[index][4] = int(new_response) # if not same, update and redo
+        rec_resp(tasklist, index, exclusive_claim_list)
 
 
 def trimZeros(str):
@@ -283,7 +422,6 @@ def ktest_setdata(file_index):
     """
     global file_list
     global debug
-
     if debug:
         print("Debug: ktest_setdata on index{}".format(file_index))
 
@@ -375,6 +513,7 @@ def ktest_iterate():
         print(dirlist)
 
     if not dirlist:
+
         print("No KLEE output, need to run KLEE")
         print("Running klee...")
         klee_run()
